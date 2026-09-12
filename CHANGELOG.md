@@ -7,7 +7,8 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [2.1.0] — 2026-09-11
 
-Fork for the Predator Helios Neo 16S AI (PHN16S-71). New control panel,
+First Pred-Arch release: a fork of Archer Compatibility Suite 2.0.1 for the
+Predator Helios Neo 16S AI (PHN16S-71). New control panel,
 new D-Bus contract, daemon hot path rewritten. Developed with the support
 of Claude (Anthropic) as a pair-programming assistant; verified on the
 hardware by the maintainer.

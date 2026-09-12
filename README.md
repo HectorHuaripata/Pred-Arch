@@ -1,4 +1,4 @@
-# Archer
+# Pred-Arch
 
 Control panel and daemon for Acer Predator / Nitro laptops on Arch Linux: performance
 profiles, fans, keyboard and LED lighting, battery, GPU mode — live, native to the
@@ -10,12 +10,16 @@ desktop, and light enough to leave running.
 | ![Overview, light](docs/screenshots/overview-light.png) | ![Lighting, light](docs/screenshots/lighting-light.png) |
 
 Maintained by [Hector Huaripata](https://github.com/HectorHuaripata). Developed and
-verified on a Predator Helios Neo 16S AI (PHN16S-71); the installer's module system,
-driver integration and daemon core come from [otectus/Archer](https://github.com/otectus/Archer)
-(MIT), which this project started from. What is new here — see `CHANGELOG.md` —
-is the Qt 6 / QML panel, the typed D-Bus contract (`docs/DBUS_V2.md`), the ENE K5130
-lighting backend (`docs/ENE_PROTOCOL.md`) and a daemon that does no work while nobody
-is looking.
+verified on a Predator Helios Neo 16S AI (PHN16S-71).
+
+Pred-Arch is a fork of the **Archer Compatibility Suite** by
+[otectus](https://github.com/otectus/Archer), released under the MIT license. The
+installer's module system, the driver integration and the daemon core come from that
+project and remain under its notice (see `LICENSE`); the daemon, service and D-Bus
+names still say "archer" for that reason and so existing installs keep working.
+What Pred-Arch adds — see `CHANGELOG.md` — is the Qt 6 / QML panel, the typed D-Bus
+contract (`docs/DBUS_V2.md`), the ENE K5130 lighting backend (`docs/ENE_PROTOCOL.md`)
+and a daemon that does no work while nobody is looking.
 
 Developed with the support of [Claude](https://claude.ai) (Anthropic), working as a
 pair-programming assistant: it proposed designs, wrote code and measurements, and
@@ -138,8 +142,8 @@ Installs [fwupd](https://fwupd.org/) for firmware update detection. Displays cur
 Clone the repository and run the installer:
 
 ```bash
-git clone https://github.com/otectus/Archer.git
-cd Archer
+git clone https://github.com/HectorHuaripata/Pred-Arch.git
+cd Pred-Arch
 ./install.sh
 ```
 

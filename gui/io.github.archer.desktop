@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Archer
-Comment=Acer laptop management - fan control, RGB, power profiles
+Comment=Pred-Arch — Acer Predator/Nitro control: profiles, fans, lighting, battery, GPU mode
 Exec=/usr/local/bin/archer-gui
 Icon=io.github.archer
 Terminal=false

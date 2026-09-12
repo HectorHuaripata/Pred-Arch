@@ -83,4 +83,4 @@ PASTE OUTPUT HERE (if empty, paste any error printed to the terminal when you ra
 
 - [ ] `sudo systemctl reload dbus.service && sudo systemctl restart archer-daemon`
 - [ ] Re-running the installer (`./install.sh --modules gui --no-confirm`)
-- [ ] Reading [README → Troubleshooting](https://github.com/otectus/Archer#troubleshooting)
+- [ ] Reading [README → Troubleshooting](https://github.com/HectorHuaripata/Pred-Arch#troubleshooting)

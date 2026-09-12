@@ -1,10 +1,10 @@
-# Contributing to Archer Compatibility Suite
+# Contributing to Pred-Arch
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/otectus/Archer.git
-cd Archer
+git clone https://github.com/HectorHuaripata/Pred-Arch.git
+cd Pred-Arch
 ```
 
 ### Requirements

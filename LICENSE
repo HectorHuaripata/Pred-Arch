@@ -1,11 +1,15 @@
 MIT License
 
-Copyright (c) 2026 Hector Huaripata — Qt 6 / QML control panel, D-Bus
-contract v2 (io.github.archer.Control1), ENE K5130 lighting backend, daemon
-hot path, and everything listed as "this fork" in CHANGELOG.md.
+Pred-Arch (https://github.com/HectorHuaripata/Pred-Arch)
+
+Copyright (c) 2026 Hector Huaripata — the Qt 6 / QML control panel, the D-Bus
+contract v2 (io.github.archer.Control1), the ENE K5130 lighting backend, the
+daemon hot path, and the other changes listed under 2.1.0 in CHANGELOG.md.
+
 Copyright (c) 2026 the Archer Compatibility Suite contributors
 (https://github.com/otectus/Archer) — the original daemon, installer modules
-and driver integration this project started from.
+and driver integration this project is derived from. Their MIT notice is
+reproduced below unchanged, as its terms require.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

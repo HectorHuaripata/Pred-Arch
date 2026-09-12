@@ -1,6 +1,6 @@
 # Archer v3 — roadmap
 
-Fork of otectus/Archer 2.0.1 for the Predator Helios Neo 16S AI (PHN16S-71)
+Pred-Arch: fork of otectus/Archer 2.0.1 for the Predator Helios Neo 16S AI (PHN16S-71)
 and, by extension, any Acer where the ENE K5130 drives the keyboard. Goal: a
 control panel that is live, light while hidden, and native to the desktop it
 runs on. The diagnosis this plan comes from is the radiography of 2026-09-11.
