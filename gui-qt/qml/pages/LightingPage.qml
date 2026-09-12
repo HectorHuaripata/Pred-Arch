@@ -48,6 +48,18 @@ Kirigami.ScrollablePage {
         title: qsTr("Button colour for %1").arg(Catalog.profileLabel(profile))
         onAccepted: Bus.call("Lighting", "SetButtonColor", [profile, U.colorToRgb(selectedColor)])
     }
+    ColorDialog {
+        id: buttonFixedDialog
+        title: qsTr("Mode button colour")
+        onSelectedColorChanged: if (visible) Bus.call("Lighting", "SetButtonFixedColor", [U.colorToRgb(selectedColor)])   // live
+        onAccepted: Bus.call("Lighting", "SetButtonFixedColor", [U.colorToRgb(selectedColor)])
+    }
+
+    function applyPreset(colours) {
+        var mapping = {}
+        for (var profile in colours) mapping[profile] = U.colorToRgb(colours[profile])
+        Bus.call("Lighting", "SetButtonColors", [mapping])
+    }
 
     ColumnLayout {
         spacing: Kirigami.Units.largeSpacing * 2
@@ -125,11 +137,23 @@ Kirigami.ScrollablePage {
         }
 
         Card {
+            id: buttonCard
             title: qsTr("Mode button LED")
             visible: page.eneBackend
-            subtitle: qsTr("coloured by the active profile, whoever changed it")
-            BoundSwitch { text: qsTr("Follow the performance profile"); bound: Lighting.buttonFollowsProfile === true; apply: v => Bus.call("Lighting", "SetButtonFollowsProfile", [v]) }
+            subtitle: qsTr("the mode key itself does nothing on Linux, but its LED is yours")
+            readonly property bool follows: Lighting.buttonFollowsProfile === true
+            RowLayout {
+                spacing: Kirigami.Units.smallSpacing
+                ChoiceButton { text: qsTr("One colour per profile"); icon.name: "view-list-details"; current: buttonCard.follows
+                    onClicked: Bus.call("Lighting", "SetButtonFollowsProfile", [true]) }
+                ChoiceButton { text: qsTr("Always the same colour"); icon.name: "color-picker"; current: !buttonCard.follows
+                    onClicked: Bus.call("Lighting", "SetButtonFollowsProfile", [false]) }
+            }
+
+            // -- per profile ------------------------------------------------
+            Hint { visible: buttonCard.follows; text: qsTr("Click a colour to change it. The bar under each profile button shows the same mapping.") }
             Flow {
+                visible: buttonCard.follows
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.largeSpacing
                 Repeater {
@@ -141,6 +165,49 @@ Kirigami.ScrollablePage {
                         QQC2.Label { text: Catalog.profileLabel(modelData) }
                     }
                 }
+            }
+            RowLayout {
+                visible: buttonCard.follows
+                spacing: Kirigami.Units.smallSpacing
+                QQC2.Label { text: qsTr("Presets"); opacity: 0.7 }
+                Repeater {
+                    model: Catalog.buttonPresets            // [[id, label, {profile: "#rrggbb"}], …]
+                    delegate: QQC2.Button {
+                        required property var modelData
+                        text: modelData[1]
+                        onClicked: page.applyPreset(modelData[2])
+                        // preview strip of the preset's colours
+                        Row {
+                            anchors.bottom: parent.bottom; anchors.bottomMargin: 2; anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: 1
+                            Repeater {
+                                model: Thermal.profileChoices || []
+                                delegate: Rectangle { required property string modelData; width: 7; height: 3; radius: 1
+                                    color: (parent.parent.parent.modelData[2])[modelData] || "transparent" }
+                            }
+                        }
+                    }
+                }
+                QQC2.Button { text: qsTr("Factory colours"); icon.name: "edit-undo"; onClicked: Bus.call("Lighting", "ResetButtonColors") }
+            }
+
+            // -- one colour -------------------------------------------------
+            Flow {
+                visible: !buttonCard.follows
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+                Repeater {
+                    model: Catalog.swatches
+                    delegate: Swatch { required property string modelData; round: true; color: modelData
+                        onClicked: Bus.call("Lighting", "SetButtonFixedColor", [U.colorToRgb(color)]) }
+                }
+                QQC2.Button { text: qsTr("Custom…"); icon.name: "color-management"
+                    onClicked: { buttonFixedDialog.selectedColor = U.rgbToColor(Lighting.buttonColor); buttonFixedDialog.open() } }
+            }
+            RowLayout {
+                visible: !buttonCard.follows
+                Swatch { round: true; width: Kirigami.Units.gridUnit * 1.3; color: U.rgbToColor(Lighting.buttonColor) }
+                Hint { text: qsTr("Current button colour. It is kept across profile changes and after resume.") }
             }
         }
 

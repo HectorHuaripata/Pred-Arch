@@ -29,6 +29,9 @@ except Exception:  # pragma: no cover - absence is a supported configuration
 # How long to keep looking for the ENE controller after startup before
 # accepting that this machine does not have one. See schedule_ene_retry().
 ENE_RETRY_SECONDS = 20
+# Button LED colour (RRGGBB) when the user turns off "follow the profile"
+# and has not picked one yet.
+DEFAULT_BUTTON_FIXED_COLOUR = "ffffff"
 
 # --- Configuration ---
 # /run/archer is created by systemd via RuntimeDirectory=archer in the unit
@@ -626,11 +629,15 @@ class HardwareManager:
         """
         if not getattr(self, "ene_ready", False):
             return
-        if not self.settings.get("button_follows_profile", True):
-            return
         try:
-            archer_ene.set_button_for_profile(
-                profile, overrides=self.settings.get("button_colours"))
+            if self.settings.get("button_follows_profile", True):
+                archer_ene.set_button_for_profile(
+                    profile, overrides=self.settings.get("button_colours"))
+            else:
+                # The user chose one colour for the button regardless of the
+                # profile; re-assert it, the EC may have touched the LED.
+                archer_ene.set_button(
+                    self.settings.get("button_fixed_colour", DEFAULT_BUTTON_FIXED_COLOUR))
         except Exception as exc:
             logger.warning(f"Could not update the button LED: {exc}")
 

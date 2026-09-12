@@ -85,6 +85,9 @@ POLKIT_ACTIONS = {
     "Lighting.SetOff": "io.otectus.archer1.set-hardware",
     "Lighting.SetButtonFollowsProfile": "io.otectus.archer1.set-hardware",
     "Lighting.SetButtonColor": "io.otectus.archer1.set-hardware",
+    "Lighting.SetButtonColors": "io.otectus.archer1.set-hardware",
+    "Lighting.ResetButtonColors": "io.otectus.archer1.set-hardware",
+    "Lighting.SetButtonFixedColor": "io.otectus.archer1.set-hardware",
     "Lighting.SetLogo": "io.otectus.archer1.set-hardware",
     "Lighting.SetBacklightTimeout": "io.otectus.archer1.set-hardware",
     "Display.SetMode": "io.otectus.archer1.set-display",
@@ -117,6 +120,9 @@ FEATURE_GATES = {
     "Lighting.SetOff": ("keyboard_per_zone", "keyboard_effects"),
     "Lighting.SetButtonFollowsProfile": ("ene_ready",),
     "Lighting.SetButtonColor": ("ene_ready",),
+    "Lighting.SetButtonColors": ("ene_ready",),
+    "Lighting.ResetButtonColors": ("ene_ready",),
+    "Lighting.SetButtonFixedColor": ("ene_ready",),
     "Lighting.SetLogo": ("ene_ready",),
     "Lighting.SetBacklightTimeout": ("backlight_timeout",),
     "Display.SetMode": ("display_mode",),
@@ -694,11 +700,10 @@ class ArcherControl:
             effect = "static"
         brightness = int((fx if last == "effect" else pz).get("brightness", pz.get("brightness", 100)))
         zones = [_hex_to_rgb(pz.get(f"zone{i}", "ffffff")) for i in range(1, 5)]
-        button_colours = st.get("button_colours") or {}
-        if self.ene is not None and hasattr(self.ene, "PROFILE_COLOURS"):
-            merged = dict(self.ene.PROFILE_COLOURS)
-            merged.update(button_colours)
-            button_colours = merged
+        defaults = dict(getattr(self.ene, "PROFILE_COLOURS", {}) or {}) if self.ene is not None else {}
+        button_colours = dict(defaults)
+        button_colours.update(st.get("button_colours") or {})
+        fixed = st.get("button_fixed_colour") or "ffffff"
         logo = st.get("logo") or {}
         return {
             "Backend": self._backend(),
@@ -711,6 +716,8 @@ class ArcherControl:
             "EffectDirection": WIRE_TO_DIRECTION.get(int(fx.get("direction", 2)), "right"),
             "ButtonFollowsProfile": bool(st.get("button_follows_profile", True)),
             "ButtonColors": {k: _hex_to_rgb(v) for k, v in button_colours.items()},
+            "ButtonDefaultColors": {k: _hex_to_rgb(v) for k, v in defaults.items()},
+            "ButtonColor": _hex_to_rgb(fixed),
             "LogoColor": _hex_to_rgb(logo.get("colour", "ffffff")),
             "LogoBrightness": max(0, min(255, int(logo.get("brightness", 100)))),
             "BacklightTimeout": bool(self.hw.get_backlight_timeout()),
@@ -949,8 +956,7 @@ class ArcherControl:
 
     def _m_Lighting_SetButtonFollowsProfile(self, sender, enabled):
         self.hw.settings.set("button_follows_profile", bool(enabled))
-        if enabled:
-            self.hw._sync_button_led(self.hw.get_thermal_profile())
+        self._resync_button()          # applies the mapping, or the fixed colour
         self._lighting_refresh()
 
     def _m_Lighting_SetButtonColor(self, sender, profile, color):
@@ -964,6 +970,45 @@ class ArcherControl:
         if profile == self.hw.get_thermal_profile():
             self._lighting.request("button", lambda: ene.set_button(_rgb_to_hex(rgb)))
         self._lighting_refresh()
+
+    def _m_Lighting_SetButtonColors(self, sender, colors):
+        ene = self._ene()
+        if ene is None:
+            raise ControlError("Unsupported", "button LED needs the ENE backend")
+        known = set(self.hw.get_thermal_profile_choices())
+        colours = dict(self.hw.settings.get("button_colours") or {})
+        for profile, color in dict(colors).items():
+            if profile in known:
+                colours[str(profile)] = _rgb_to_hex(tuple(_byte(c, "colour") for c in color))
+        self.hw.settings.set("button_colours", colours)
+        self._resync_button()
+        self._lighting_refresh()
+
+    def _m_Lighting_ResetButtonColors(self, sender):
+        if self._ene() is None:
+            raise ControlError("Unsupported", "button LED needs the ENE backend")
+        self.hw.settings.set("button_colours", {})
+        self._resync_button()
+        self._lighting_refresh()
+
+    def _m_Lighting_SetButtonFixedColor(self, sender, color):
+        ene = self._ene()
+        if ene is None:
+            raise ControlError("Unsupported", "button LED needs the ENE backend")
+        colour = _rgb_to_hex(tuple(_byte(c, "colour") for c in color))
+
+        def write():
+            ene.set_button(colour)                 # raises on failure: nothing saved
+            self.hw.settings.set("button_fixed_colour", colour)
+            self.hw.settings.set("button_follows_profile", False)
+            self._lighting_refresh()
+
+        self._lighting.request("button", write)
+
+    def _resync_button(self):
+        """Re-colour the button after a mapping change (coalesced)."""
+        profile = self.hw.get_thermal_profile()
+        self._lighting.request("button", lambda: self.hw._sync_button_led(profile))
 
     def _m_Lighting_SetLogo(self, sender, color, brightness):
         ene = self._ene()

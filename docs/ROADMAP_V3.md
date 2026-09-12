@@ -46,7 +46,8 @@ Qt 6 / QML with PySide6, Kirigami + qqc2-desktop-style (Breeze under Plasma).
 - [x] Pages created on first visit and kept; every control binds to the daemon property it shows (`archerqt/bus.py` generates the Qt properties from the XML).
 - [x] Hidden to tray ⇒ `Telemetry.Unsubscribe`; visible ⇒ `Subscribe(1000)` (500 was measured to cost ~6 % CPU in full-window re-renders for no visible gain on integer readings).
 - [x] Overview: GPU-drawn gauges (Shapes) for temps/usage, RPM hero numbers, 5-minute sparkline, profile bar that follows the hardware button.
-- [x] Lighting: four-zone preview, click a zone to colour it alone, swatches + colour dialog applied live, effect gallery, speed/direction, button LED per profile, lid logo, backlight timeout. No "Apply" anywhere.
+- [x] Lighting: four-zone preview, click a zone to colour it alone, swatches + colour dialog applied live, effect gallery, speed/direction, lid logo, backlight timeout. No "Apply" anywhere.
+- [x] Mode-button LED: one colour per profile (own colours, presets such as traffic light, factory reset; the mapping is echoed under the profile buttons) or one fixed colour kept across profile changes and resume.
 - [x] Controls revert when the daemon refuses (typed errors → passive notification; `NotAuthorized` silent).
 - [x] Tray: `QSystemTrayIcon` with quick profile switch and temperatures in the tooltip while visible.
 - [x] Restructured for contribution: `paths` / `settings` / `catalog` / `tray` / `controller` modules, every string through `qsTr()` / `translate()`, no literal paths, thresholds or cadences in QML.

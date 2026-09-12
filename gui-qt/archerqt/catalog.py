@@ -82,6 +82,21 @@ CHART_RANGES = ((300, "5 min"), (600, "10 min"), (1800, "30 min"), (3600, "1 hou
 SWATCHES = ("#ffffff", "#ff3b30", "#ff9500", "#ffd60a", "#34c759",
             "#00c7be", "#0a84ff", "#5e5ce6", "#bf5af2", "#ff2d55")
 
+# Ready-made profile -> button colour mappings. The factory mapping comes
+# from the daemon (Lighting.ButtonDefaultColors), so it is not repeated
+# here; "reset" uses Lighting.ResetButtonColors.
+BUTTON_PRESETS = (
+    ("traffic-light", "Traffic light", {
+        "low-power": "#2ecc40", "quiet": "#a6e22e", "balanced": "#ffd60a",
+        "balanced-performance": "#ff9500", "performance": "#ff3b30"}),
+    ("cool-to-warm", "Cool to warm", {
+        "low-power": "#0a84ff", "quiet": "#00c7be", "balanced": "#ffffff",
+        "balanced-performance": "#ff9500", "performance": "#ff3b30"}),
+    ("monochrome", "All white", {
+        "low-power": "#ffffff", "quiet": "#ffffff", "balanced": "#ffffff",
+        "balanced-performance": "#ffffff", "performance": "#ffffff"}),
+)
+
 BATTERY_STATUS = {
     "charging": "Charging",
     "discharging": "On battery",
@@ -138,3 +153,8 @@ class Catalog(QObject):
     @Property("QVariantList", constant=True)
     def swatches(self):
         return list(SWATCHES)
+
+    @Property("QVariantList", constant=True)
+    def buttonPresets(self):
+        """[[id, label, {profile: "#rrggbb"}], …]"""
+        return [[preset_id, _tr(label), dict(colours)] for preset_id, label, colours in BUTTON_PRESETS]

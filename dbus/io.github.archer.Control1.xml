@@ -130,6 +130,11 @@
     <property name="ButtonFollowsProfile" type="b"  access="read"/>
     <!-- profile -> RGB, used when ButtonFollowsProfile is true -->
     <property name="ButtonColors"     type="a{s(yyy)}" access="read"/>
+    <!-- Factory mapping, so a client can offer "reset" and presets
+         relative to it. -->
+    <property name="ButtonDefaultColors" type="a{s(yyy)}" access="read"/>
+    <!-- The one colour used when ButtonFollowsProfile is false. -->
+    <property name="ButtonColor"      type="(yyy)"  access="read"/>
     <property name="LogoColor"        type="(yyy)"  access="read"/>
     <property name="LogoBrightness"   type="y"      access="read"/>
     <property name="BacklightTimeout" type="b"      access="read"/>
@@ -159,6 +164,16 @@
     </method>
     <method name="SetButtonColor">
       <arg direction="in" name="profile" type="s"/>
+      <arg direction="in" name="color" type="(yyy)"/>
+    </method>
+    <!-- Replace the whole profile -> colour mapping in one call (one
+         authorisation, one LED write). Unknown profiles are ignored. -->
+    <method name="SetButtonColors">
+      <arg direction="in" name="colors" type="a{s(yyy)}"/>
+    </method>
+    <method name="ResetButtonColors"/>
+    <!-- Colour the button once and for all; turns ButtonFollowsProfile off. -->
+    <method name="SetButtonFixedColor">
       <arg direction="in" name="color" type="(yyy)"/>
     </method>
     <method name="SetLogo">
