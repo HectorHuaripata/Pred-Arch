@@ -55,10 +55,8 @@ Kirigami.ScrollablePage {
         onAccepted: Bus.call("Lighting", "SetButtonFixedColor", [U.colorToRgb(selectedColor)])
     }
 
-    function applyPreset(colours) {
-        var mapping = {}
-        for (var profile in colours) mapping[profile] = U.colorToRgb(colours[profile])
-        Bus.call("Lighting", "SetButtonColors", [mapping])
+    function applyPreset(colours) {           // {profile: [r, g, b]}
+        Bus.call("Lighting", "SetButtonColors", [colours])
     }
 
     ColumnLayout {
@@ -183,7 +181,8 @@ Kirigami.ScrollablePage {
                             Repeater {
                                 model: Thermal.profileChoices || []
                                 delegate: Rectangle { required property string modelData; width: 7; height: 3; radius: 1
-                                    color: (parent.parent.parent.modelData[2])[modelData] || "transparent" }
+                                    readonly property var rgb: (parent.parent.parent.modelData[2])[modelData]
+                                    color: rgb ? U.rgbToColor(rgb) : "transparent" }
                             }
                         }
                     }

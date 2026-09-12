@@ -15,6 +15,12 @@ def _tr(text):
     return QCoreApplication.translate("Catalog", text)
 
 
+def _hex_to_rgb(value):
+    """"#rrggbb" -> [r, g, b]."""
+    v = value.lstrip("#")
+    return [int(v[0:2], 16), int(v[2:4], 16), int(v[4:6], 16)]
+
+
 # platform_profile value -> (label, theme icon)
 PROFILES = {
     "low-power": ("Eco", "battery-low"),
@@ -156,5 +162,7 @@ class Catalog(QObject):
 
     @Property("QVariantList", constant=True)
     def buttonPresets(self):
-        """[[id, label, {profile: "#rrggbb"}], …]"""
-        return [[preset_id, _tr(label), dict(colours)] for preset_id, label, colours in BUTTON_PRESETS]
+        """[[id, label, {profile: [r, g, b]}], …] — RGB triplets, the shape
+        Lighting.SetButtonColors takes."""
+        return [[preset_id, _tr(label), {profile: _hex_to_rgb(value) for profile, value in colours.items()}]
+                for preset_id, label, colours in BUTTON_PRESETS]
