@@ -118,16 +118,19 @@ class Catalog(QObject):
 
     @Slot(str, result=str)
     def profileLabel(self, profile):
+        """Display name of a platform_profile value ("balanced-performance" → "Balanced+")."""
         entry = PROFILES.get(profile)
         return _tr(entry[0]) if entry else profile
 
     @Slot(str, result=str)
     def profileIcon(self, profile):
+        """Theme icon name for a platform_profile value."""
         entry = PROFILES.get(profile)
         return entry[1] if entry else "speedometer"
 
     @Slot(str, result=str)
     def capabilityLabel(self, feature):
+        """Display name of a System.Features identifier."""
         return _tr(CAPABILITIES.get(feature, feature))
 
     @Slot(str, result=str)
@@ -138,26 +141,32 @@ class Catalog(QObject):
 
     @Slot(str, result=str)
     def batteryStatusLabel(self, status):
+        """Display name of a Telemetry.Battery status."""
         return _tr(BATTERY_STATUS.get(status, status))
 
     @Property("QVariantList", constant=True)
     def usbChargingLevels(self):
+        """[[percent, label], …] for Battery.SetUsbCharging."""
         return [[level, _tr(label)] for level, label in USB_CHARGING_LEVELS]
 
     @Property("QVariantList", constant=True)
     def displayModes(self):
+        """[[mode, label, hint], …] for Display.SetMode."""
         return [[mode, _tr(label), _tr(hint)] for mode, label, hint in DISPLAY_MODES]
 
     @Property("QVariantList", constant=True)
     def modprobeParameters(self):
+        """[[value, label], …]; "" means auto-detect (ClearModprobeParameter)."""
         return [[value, _tr(label)] for value, label in MODPROBE_PARAMETERS]
 
     @Property("QVariantList", constant=True)
     def chartRanges(self):
+        """[[seconds, label], …] for the temperature chart range picker."""
         return [[seconds, _tr(label)] for seconds, label in CHART_RANGES]
 
     @Property("QVariantList", constant=True)
     def swatches(self):
+        """Quick colours ("#rrggbb") for the keyboard and the mode button."""
         return list(SWATCHES)
 
     @Property("QVariantList", constant=True)

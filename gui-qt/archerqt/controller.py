@@ -25,6 +25,8 @@ def _tr(text):
 
 
 class AppController(QObject):
+    """Exposed to QML as `App`. Owns the tray and the window it shows/hides."""
+
     overviewVisibleChanged = Signal()
     windowVisibleChanged = Signal()
 
@@ -58,19 +60,23 @@ class AppController(QObject):
 
     @Property(bool, notify=windowVisibleChanged)
     def windowVisible(self):
+        """Whether the main window is on screen (drives the telemetry cadence)."""
         return self._window_visible
 
     @Property(bool, constant=True)
     def hasTray(self):
+        """False when the desktop has no tray: closing the window then quits."""
         return self._tray.available
 
     @Property(str, constant=True)
     def iconPath(self):
+        """Path of the application SVG, or "" to fall back to a theme icon."""
         return paths.asset("archer.svg")
 
     # -- window ------------------------------------------------------------
 
     def attach_window(self, window):
+        """Follow the QML window's visibility; call once after loading Main.qml."""
         self._window = window
         window.visibleChanged.connect(self._on_window_visible)
         self._on_window_visible(window.isVisible())
@@ -85,6 +91,7 @@ class AppController(QObject):
 
     @Slot()
     def showWindow(self):
+        """Show, raise and focus the main window."""
         if self._window:
             self._window.show()
             self._window.raise_()
@@ -92,6 +99,7 @@ class AppController(QObject):
 
     @Slot()
     def toggleWindow(self):
+        """Hide the window if visible, otherwise show it (tray click)."""
         if self._window and self._window.isVisible():
             self._window.hide()
         else:

@@ -32,6 +32,7 @@ def _first_existing(candidates):
 
 
 def qml_dir() -> Path:
+    """Directory holding Main.qml."""
     return GUI_DIR / "qml"
 
 
@@ -61,4 +62,5 @@ def asset(name: str) -> str:
 
 
 def translations_dir() -> Path:
+    """Directory the QTranslator loads archer_<locale>.qm from."""
     return GUI_DIR / "translations"

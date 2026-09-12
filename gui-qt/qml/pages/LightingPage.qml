@@ -171,18 +171,25 @@ Kirigami.ScrollablePage {
                 Repeater {
                     model: Catalog.buttonPresets            // [[id, label, {profile: "#rrggbb"}], …]
                     delegate: QQC2.Button {
+                        id: presetButton
                         required property var modelData
+                        readonly property var colours: modelData[2]     // {profile: [r, g, b]}
                         text: modelData[1]
-                        onClicked: page.applyPreset(modelData[2])
-                        // preview strip of the preset's colours
+                        onClicked: page.applyPreset(colours)
+                        // preview strip: one dash per profile in the preset's colour
                         Row {
-                            anchors.bottom: parent.bottom; anchors.bottomMargin: 2; anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 2
+                            anchors.horizontalCenter: parent.horizontalCenter
                             spacing: 1
                             Repeater {
                                 model: Thermal.profileChoices || []
-                                delegate: Rectangle { required property string modelData; width: 7; height: 3; radius: 1
-                                    readonly property var rgb: (parent.parent.parent.modelData[2])[modelData]
-                                    color: rgb ? U.rgbToColor(rgb) : "transparent" }
+                                delegate: Rectangle {
+                                    required property string modelData
+                                    readonly property var rgb: presetButton.colours[modelData]
+                                    width: Kirigami.Units.smallSpacing * 1.75; height: 3; radius: 1
+                                    color: rgb ? U.rgbToColor(rgb) : "transparent"
+                                }
                             }
                         }
                     }

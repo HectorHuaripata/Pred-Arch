@@ -179,10 +179,13 @@ class ArcherBus(QObject):
 
     @Property(bool, notify=connectedChanged)
     def connected(self):
+        """True once the daemon owns its bus name and every interface has
+        been read at least once."""
         return self._connected
 
     @Property(str, notify=errorChanged)
     def error(self):
+        """Human-readable reason the daemon is unreachable, or ""."""
         return self._error
 
     def _set_error(self, text):

@@ -73,7 +73,7 @@ class ArcherDBusService(dbus.service.Object):
         # v1 clients, by unique bus name. A client is noted on its first
         # call and forgotten when its name leaves the bus, so the telemetry
         # timer below does no sensor work once the old GUI is gone. The v2
-        # layer (archer_control) has its own subscriber accounting.
+        # layer (archer_control package) has its own subscriber accounting.
         self._v1_clients = set()
         try:
             # One match rule, added non-blocking at init. Calling

@@ -1,7 +1,7 @@
 # Archer control panel (Qt 6 / QML)
 
 The v3 GUI. Talks only to `io.github.archer.Control1` (see
-`docs/DBUS_V2.md`); needs daemon 2.1+ with `archer_control.py`.
+`docs/DBUS_V2.md`); needs daemon 2.1+ with the `archer_control` package.
 
 ## Layout
 

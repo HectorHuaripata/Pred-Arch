@@ -251,7 +251,7 @@ Archer/
   gui/
     archer_daemon.py              # Root daemon (D-Bus, sysfs, fan curves, game mode)
     archer_dbus.py                # D-Bus service with polkit authorization
-    archer_control.py             # D-Bus contract v2 (io.github.archer.Control1)
+    archer_control/               # D-Bus contract v2 (io.github.archer.Control1): store, telemetry, interfaces/
     archer_ene.py                 # ENE K5130 keyboard/LED backend
     io.otectus.Archer1.conf       # D-Bus system bus policy
     io.otectus.Archer1.policy     # Polkit action definitions

@@ -34,6 +34,9 @@ DEFAULT_MEMORY_HOT_PERCENT = 90
 
 
 class AppSettings(QObject):
+    """Exposed to QML as `Settings`. Read once at startup; `chartRange` is
+    the only value written back."""
+
     chartRangeChanged = Signal()
 
     def __init__(self, parent=None):
@@ -73,28 +76,35 @@ class AppSettings(QObject):
 
     @Property(int, constant=True)
     def intervalHiddenMs(self):
+        """Telemetry interval while the window is hidden (0 = unsubscribed)."""
         return self._interval_hidden
 
     @Property(int, constant=True)
     def intervalVisibleMs(self):
+        """Telemetry interval while a page other than Overview is in front."""
         return self._interval_visible
 
     @Property(int, constant=True)
     def intervalOverviewMs(self):
+        """Telemetry interval while the Overview is in front."""
         return self._interval_overview
 
     @Property(int, constant=True)
     def chartSampleMs(self):
+        """Period of the temperature chart's sampling timer."""
         return self._chart_sample
 
     @Property(int, constant=True)
     def tempWarnC(self):
+        """Temperature from which gauges turn to the warning colour."""
         return self._temp_warn
 
     @Property(int, constant=True)
     def tempHotC(self):
+        """Temperature from which gauges turn to the critical colour."""
         return self._temp_hot
 
     @Property(int, constant=True)
     def memoryHotPercent(self):
+        """Memory usage from which the gauge turns to the critical colour."""
         return self._memory_hot

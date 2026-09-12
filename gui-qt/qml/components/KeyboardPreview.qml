@@ -11,6 +11,8 @@ Item {
     property var zones: Lighting.zones || [[0,0,0],[0,0,0],[0,0,0],[0,0,0]]
     property real brightness: (Lighting.brightness || 0) / 100
     property bool off: Lighting.effect === "off"
+    // What an unlit key bed looks like: the window ground, much darker.
+    readonly property color offColor: Qt.darker(Kirigami.Theme.backgroundColor, 2.5)
     signal zoneClicked(int index)
     implicitHeight: Kirigami.Units.gridUnit * 8
     implicitWidth: Kirigami.Units.gridUnit * 24
@@ -32,7 +34,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     radius: Kirigami.Units.smallSpacing
-                    readonly property color zoneColor: root.off ? "#101010" : U.rgbToColor(root.zones[index])
+                    readonly property color zoneColor: root.off ? root.offColor : U.rgbToColor(root.zones[index])
                     color: Qt.rgba(zoneColor.r, zoneColor.g, zoneColor.b, 0.25 + 0.75 * root.brightness)
                     Behavior on color { enabled: root.visible; ColorAnimation { duration: 200 } }
                     border.width: root.selected === index ? 2 : 1

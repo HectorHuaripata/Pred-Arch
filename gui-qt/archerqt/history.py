@@ -24,6 +24,8 @@ MAX_GAP_S = LEVELS[-1][0] * LEVELS[-1][1]
 
 
 class _Ring:
+    """Fixed-size ring of averaged points at one resolution (`step` seconds)."""
+
     __slots__ = ("step", "size", "data", "head", "count", "acc_sum", "acc_n", "acc_len")
 
     def __init__(self, step, size):
@@ -37,6 +39,7 @@ class _Ring:
         self.acc_len = 0         # raw seconds accumulated towards the next point
 
     def add_second(self, values):
+        """Accumulate one second of samples; writes a point every `step` seconds."""
         for i, v in enumerate(values):
             if not math.isnan(v):
                 self.acc_sum[i] += v
@@ -64,6 +67,9 @@ class _Ring:
 
 
 class History(QObject):
+    """Exposed to QML as `History`: push() one sample per second, window()
+    to read a range back at a fitting resolution."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._rings = [_Ring(step, size) for step, size in LEVELS]

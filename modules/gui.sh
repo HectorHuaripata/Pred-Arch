@@ -33,7 +33,7 @@ module_install() {
     local _required=(
         "$SCRIPT_DIR/gui/archer_daemon.py"
         "$SCRIPT_DIR/gui/archer_dbus.py"
-        "$SCRIPT_DIR/gui/archer_control.py"
+        "$SCRIPT_DIR/gui/archer_control/service.py"
         "$SCRIPT_DIR/dbus/io.github.archer.Control1.xml"
         "$SCRIPT_DIR/gui-qt/archer_qt.py"
         "$SCRIPT_DIR/gui-qt/qml/Main.qml"
@@ -64,7 +64,9 @@ module_install() {
     log "Installing Archer GUI to $_GUI_INSTALL_DIR..."
     run_sudo cp "$SCRIPT_DIR/gui/archer_daemon.py" "$_GUI_INSTALL_DIR/"
     run_sudo cp "$SCRIPT_DIR/gui/archer_dbus.py" "$_GUI_INSTALL_DIR/"
-    run_sudo cp "$SCRIPT_DIR/gui/archer_control.py" "$_GUI_INSTALL_DIR/"
+    run_sudo rm -rf "$_GUI_INSTALL_DIR/archer_control" "$_GUI_INSTALL_DIR/archer_control.py"
+    run_sudo cp -r "$SCRIPT_DIR/gui/archer_control" "$_GUI_INSTALL_DIR/"
+    run_sudo find "$_GUI_INSTALL_DIR/archer_control" -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
     run_sudo cp "$SCRIPT_DIR/dbus/io.github.archer.Control1.xml" "$_GUI_INSTALL_DIR/"
     if [[ -f "$SCRIPT_DIR/gui/archer_ene.py" ]]; then
         run_sudo cp "$SCRIPT_DIR/gui/archer_ene.py" "$_GUI_INSTALL_DIR/"

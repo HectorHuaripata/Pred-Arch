@@ -25,7 +25,7 @@ Baseline to beat (window hidden to tray, 20 min uptime):
 
 Contract: [`dbus/io.github.archer.Control1.xml`](../dbus/io.github.archer.Control1.xml) + [`DBUS_V2.md`](DBUS_V2.md).
 
-- [x] `gui/archer_control.py`: `PropertyStore` + `Gio.DBusConnection` registration of the XML; v1 kept as a shim in the same process.
+- [x] `gui/archer_control/` (package: constants, store, telemetry, coalescer, one mixin per interface, service): `PropertyStore` + `Gio.DBusConnection` registration of the XML; v1 kept as a shim in the same process.
 - [x] Telemetry: subscriber tracking via `NameOwnerChanged`, adaptive interval (250–5000 ms), delta-only emission, no subprocess; v1 `TelemetryUpdated` only while a v1 client is on the bus.
 - [x] Sensor paths resolved once (`_resolve_sensor_paths`), `/proc/stat` delta in Python, NVML via ctypes, GPU temperature from the EC hwmon (`acer` temp2) so the dGPU is not woken.
 - [x] `Thermal.Profile` follows `platform_profile` through `sysfs_notify` (POLLPRI, zero cost idle, ~170 ms end-to-end from `powerprofilesctl`); WMI attributes are never polled — each read is 13–20 ms of CPU on this platform.

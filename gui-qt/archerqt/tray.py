@@ -39,13 +39,16 @@ class TrayIcon(QObject):
 
     @property
     def available(self):
+        """Whether a tray icon exists on this desktop."""
         return self._icon is not None
 
     def set_window_visible(self, visible):
+        """Tooltip shows temperatures only while telemetry flows (window visible)."""
         self._window_visible = visible
         self._update_tooltip()
 
     def notify(self, title, text):
+        """Desktop notification through the tray, if there is one."""
         if self._icon:
             self._icon.showMessage(title, text)
 
