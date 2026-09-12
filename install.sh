@@ -213,12 +213,13 @@ install_shared_deps() {
         deps+=(clang llvm)
     fi
 
-    # A full upgrade can legitimately fail or be interrupted (mirror down,
-    # conflict, Ctrl-C). Do not take the whole install down with it: every
-    # module installs its own packages with --needed and reports on its own.
+    # This must be a full upgrade and it must succeed. The package
+    # databases are refreshed by -Sy, so installing anything with a plain
+    # `pacman -S` afterwards would be a partial upgrade: modules would pull
+    # new versions of their packages against an older base (e.g. PySide6
+    # 6.11.2 on qt6-base 6.11.1 — an ImportError at first launch).
     if ! run_sudo pacman -Syu --needed --noconfirm "${deps[@]}"; then
-        warn "System upgrade / prerequisite install did not complete. Continuing with the selected modules;"
-        warn "if a module fails on a missing package, run 'sudo pacman -Syu' and retry."
+        error "The system upgrade did not complete. Run 'sudo pacman -Syu' until it succeeds, then rerun the installer. Installing modules on a partially upgraded system would break them."
     fi
 }
 
