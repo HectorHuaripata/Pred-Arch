@@ -16,10 +16,10 @@ Kirigami.ScrollablePage {
     // only announces *changes*, so sampling on cpuTempChanged would freeze
     // the time axis whenever the temperature is steady.
     Timer {
-        interval: chart.sampleMs
+        interval: 1000
         running: page.visible && Bus.connected && Telemetry.intervalMs > 0
         repeat: true
-        onTriggered: chart.push(Telemetry.cpuTemp || 0, Telemetry.gpuTemp || 0)
+        onTriggered: { History.push(Telemetry.cpuTemp || 0, Telemetry.gpuTemp || 0); chart.refresh() }
     }
 
     ColumnLayout {
@@ -78,13 +78,23 @@ Kirigami.ScrollablePage {
         }
 
         Card {
-            title: "Temperature, last 10 minutes"
+            title: "Temperature"
             RowLayout {
                 spacing: Kirigami.Units.largeSpacing
                 Rectangle { width: 10; height: 10; radius: 5; color: chart.colorA } Text { text: "CPU"; color: Kirigami.Theme.textColor }
                 Rectangle { width: 10; height: 10; radius: 5; color: chart.colorB } Text { text: "GPU"; color: Kirigami.Theme.textColor }
+                Item { Layout.fillWidth: true }
+                Text { text: "Show"; color: Kirigami.Theme.textColor; opacity: 0.7 }
+                QQC2.ComboBox {
+                    id: rangeBox
+                    // seconds of history on screen; samples are one per second
+                    readonly property var spans: [300, 600, 1800, 3600, 86400]
+                    model: ["5 min", "10 min", "30 min", "1 hour", "1 day"]
+                    currentIndex: Math.max(0, spans.indexOf(App.chartRange))
+                    onActivated: App.chartRange = spans[currentIndex]
+                }
             }
-            Sparkline { id: chart; Layout.fillWidth: true; minValue: 20; maxValue: 100; gridStep: 20; capacity: 600; sampleMs: 1000 }
+            Sparkline { id: chart; Layout.fillWidth: true; minValue: 20; maxValue: 100; gridStep: 20; windowSeconds: App.chartRange }
         }
     }
 }

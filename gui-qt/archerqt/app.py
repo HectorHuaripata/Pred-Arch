@@ -8,13 +8,14 @@ import signal
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Property, QObject, QProcess, Qt, QUrl, Signal, Slot, QTimer
+from PySide6.QtCore import Property, QObject, QProcess, QSettings, Qt, QUrl, Signal, Slot, QTimer
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 from archerqt.bus import ArcherBus
+from archerqt.history import History
 
 logger = logging.getLogger("archer-qt")
 
@@ -49,6 +50,7 @@ class AppController(QObject):
 
     overviewVisibleChanged = Signal()
     windowVisibleChanged = Signal()
+    chartRangeChanged = Signal()
 
     def __init__(self, bus, parent=None):
         super().__init__(parent)
@@ -58,6 +60,8 @@ class AppController(QObject):
         self._tray = None
         self._profile_actions = {}
         self._window = None
+        self._settings = QSettings("archer", "archer-qt")
+        self._chart_range = int(self._settings.value("overview/chartRange", 600))
 
     # QML tells us which page is in front; we decide the cadence.
     @Property(bool, notify=overviewVisibleChanged)
@@ -83,6 +87,19 @@ class AppController(QObject):
             self._window_visible = value
             self.windowVisibleChanged.emit()
             self._update_interval()
+
+    # Seconds of temperature history shown on the Overview; remembered.
+    @Property(int, notify=chartRangeChanged)
+    def chartRange(self):
+        return self._chart_range
+
+    @chartRange.setter
+    def chartRange(self, seconds):
+        seconds = int(seconds)
+        if seconds != self._chart_range:
+            self._chart_range = seconds
+            self._settings.setValue("overview/chartRange", seconds)
+            self.chartRangeChanged.emit()
 
     @Property(bool, constant=True)
     def hasTray(self):
@@ -225,6 +242,7 @@ def main(argv=None):
     ctx = engine.rootContext()
     ctx.setContextProperty("Bus", bus)
     ctx.setContextProperty("App", controller)
+    ctx.setContextProperty("History", History())
     for short, obj in bus.interfaces.items():
         ctx.setContextProperty(short, obj)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
