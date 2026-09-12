@@ -213,7 +213,13 @@ install_shared_deps() {
         deps+=(clang llvm)
     fi
 
-    run_sudo pacman -Syu --needed --noconfirm "${deps[@]}"
+    # A full upgrade can legitimately fail or be interrupted (mirror down,
+    # conflict, Ctrl-C). Do not take the whole install down with it: every
+    # module installs its own packages with --needed and reports on its own.
+    if ! run_sudo pacman -Syu --needed --noconfirm "${deps[@]}"; then
+        warn "System upgrade / prerequisite install did not complete. Continuing with the selected modules;"
+        warn "if a module fails on a missing package, run 'sudo pacman -Syu' and retry."
+    fi
 }
 
 run_selected_modules() {
