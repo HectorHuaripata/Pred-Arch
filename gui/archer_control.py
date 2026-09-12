@@ -41,9 +41,14 @@ INTERVAL_MIN_MS = 250
 INTERVAL_MAX_MS = 5000
 # Battery does not move faster than this, whatever the subscriber asked for.
 BATTERY_PERIOD_S = 10
-# platform_profile is a single small sysfs read; this catches the hardware
-# button, powerprofilesctl and the Plasma widget within two seconds.
-PROFILE_POLL_S = 2
+# platform_profile changes are delivered by the kernel through sysfs_notify
+# (POLLPRI on the file): the core notifies on every store, and linuwu_sense
+# calls platform_profile_notify() from the hardware-button handler. Reading
+# the attribute costs ~13 ms of CPU on this platform (the ACPI interpreter
+# runs the WMI method), so it is read only when notified, plus a slow
+# safety poll that also refreshes ENE readiness and fan-curve state.
+PLATFORM_PROFILE_PATH = "/sys/firmware/acpi/platform_profile"
+SLOW_POLL_S = 30
 # Lighting setters coalesce bursts (a slider drag) into one write per device
 # every this many ms. The ENE tolerates 20 Hz comfortably.
 LIGHTING_FLUSH_MS = 50
@@ -425,14 +430,23 @@ class ArcherControl:
             self._reg_ids.append(reg)
 
         self._seed_all()
+        self._profile_fd = None
+        self._profile_watch = 0
+        self._watch_profile_notify()
         self._owner_id = Gio.bus_own_name_on_connection(
             self._conn, BUS_NAME, Gio.BusNameOwnerFlags.NONE,
             lambda c, n: logger.info(f"D-Bus service registered ({n})"),
             lambda c, n: logger.error(f"Lost or could not acquire bus name {n}"),
         )
-        GLib.timeout_add_seconds(PROFILE_POLL_S, self._watch_slow_state)
+        GLib.timeout_add_seconds(SLOW_POLL_S, self._watch_slow_state)
 
     def stop(self):
+        if self._profile_watch:
+            GLib.source_remove(self._profile_watch)
+            self._profile_watch = 0
+        if self._profile_fd is not None:
+            os.close(self._profile_fd)
+            self._profile_fd = None
         if self._owner_id:
             Gio.bus_unown_name(self._owner_id)
             self._owner_id = 0
@@ -542,17 +556,51 @@ class ArcherControl:
         self.telemetry.sample_now()
         self._last_profile = s.value(self._iface("Thermal"), "Profile")
 
-    def _watch_slow_state(self):
-        """Every PROFILE_POLL_S: profile (any writer), ENE readiness, fan
-        curve activity. All single small reads."""
+    def _watch_profile_notify(self):
+        """Arm a POLLPRI watch on platform_profile. Zero cost until the
+        kernel signals a change, whoever wrote it."""
+        if not os.path.exists(PLATFORM_PROFILE_PATH):
+            return
         try:
-            profile = self.hw.get_thermal_profile()
-            if profile != self._last_profile:
-                self._last_profile = profile
-                # Keeps the button LED in step; the hw method is a no-op
-                # without the ENE.
-                self.hw.poll_profile_led()
-            self.store.update(self._iface("Thermal"), self._thermal_values())
+            self._profile_fd = os.open(PLATFORM_PROFILE_PATH, os.O_RDONLY)
+            # A sysfs attribute must be read once before poll() reports
+            # changes, and re-read after each event to re-arm it.
+            os.read(self._profile_fd, 64)
+            channel = GLib.IOChannel.unix_new(self._profile_fd)
+            self._profile_watch = GLib.io_add_watch(
+                channel, GLib.PRIORITY_DEFAULT,
+                GLib.IOCondition.PRI | GLib.IOCondition.ERR,
+                self._on_profile_notify)
+            logger.info("Watching platform_profile through sysfs_notify")
+        except OSError as e:
+            logger.warning(f"platform_profile notify watch unavailable: {e}")
+            if self._profile_fd is not None:
+                os.close(self._profile_fd)
+                self._profile_fd = None
+
+    def _on_profile_notify(self, channel, condition):
+        try:
+            os.lseek(self._profile_fd, 0, os.SEEK_SET)
+            profile = os.read(self._profile_fd, 64).decode(errors="replace").strip()
+        except OSError as e:
+            logger.warning(f"platform_profile read after notify failed: {e}")
+            return True
+        self._on_profile_value(profile)
+        return True
+
+    def _on_profile_value(self, profile):
+        if profile and profile != self._last_profile:
+            self._last_profile = profile
+            # Keeps the button LED in step; a no-op without the ENE.
+            self.hw.poll_profile_led()
+            logger.info(f"platform_profile is now {profile}")
+        self.store.update(self._iface("Thermal"), self._thermal_values(profile))
+
+    def _watch_slow_state(self):
+        """Every SLOW_POLL_S: ENE readiness, fan-curve state, and one
+        profile read as a safety net for the notify watch. One WMI read."""
+        try:
+            self._on_profile_value(self.hw.get_thermal_profile())
             self.store.update(self._iface("System"), {
                 "EneReady": bool(getattr(self.hw, "ene_ready", False)),
                 "Features": list(self.hw.features),
@@ -580,7 +628,11 @@ class ArcherControl:
             "EneReady": bool(getattr(self.hw, "ene_ready", False)),
         }
 
-    def _thermal_values(self):
+    def _thermal_values(self, profile=None):
+        """profile: pass the value when it was just read; every read of
+        platform_profile is a ~13 ms WMI round trip on this hardware."""
+        if profile is None:
+            profile = self.hw.get_thermal_profile()
         cpu, gpu = self.hw.get_fan_speed()
         curves_state = self.hw.get_fan_curve_state() or {}
         curves = {}
@@ -595,7 +647,7 @@ class ArcherControl:
         else:
             mode = "auto"
         return {
-            "Profile": str(self.hw.get_thermal_profile()),
+            "Profile": str(profile),
             "ProfileChoices": list(self.hw.get_thermal_profile_choices()),
             "FanMode": mode,
             "FanSpeed": (int(cpu or 0), int(gpu or 0)),
@@ -745,7 +797,7 @@ class ArcherControl:
             raise ControlError(kind, err or "profile write failed")
         self.hw.settings.set("thermal_profile", profile)
         self._last_profile = profile
-        self.store.update(self._iface("Thermal"), self._thermal_values())
+        self.store.update(self._iface("Thermal"), self._thermal_values(profile))
 
     def _m_Thermal_SetFanSpeed(self, sender, cpu_percent, gpu_percent):
         for v in (cpu_percent, gpu_percent):

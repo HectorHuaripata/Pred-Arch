@@ -56,10 +56,19 @@ rules beyond "emit when changed":
    `ctypes` with a 2 s cache, `nvidia-smi` is never spawned on the hot path.
 
 Everything outside `Telemetry` is event-driven: `Thermal.Profile` is watched
-by polling `platform_profile` every 2 s (cheap single read, and it catches the
-hardware button and any other writer), lighting properties change when a
-setter succeeds, `Display.Mode` when `envycontrol` returns, `Firmware.Updates`
-when a `Refresh` finishes.
+through the kernel's `sysfs_notify` on `platform_profile` (POLLPRI on the
+file — the core notifies on every store and `linuwu_sense` calls
+`platform_profile_notify()` from the hardware-button handler), lighting
+properties change when a setter succeeds, `Display.Mode` when `envycontrol`
+returns, `Firmware.Updates` when a `Refresh` finishes. A 30 s safety poll
+refreshes ENE readiness and fan-curve state.
+
+**Every WMI-backed sysfs attribute costs 13–20 ms of CPU to read on this
+platform** (`platform_profile`, `battery_limiter`, `usb_charging`, …; the ACPI
+interpreter runs the WMI method), and `four_zoned_kb/per_zone_mode` costs
+~70 ms. That is why nothing in the daemon polls them: they are read once at
+startup, after a setter, and on notification. The EC hwmon (`acer`) fans and
+temperatures are ordinary reads (~0.1 ms).
 
 ## Lighting: immediate apply with coalescing
 
