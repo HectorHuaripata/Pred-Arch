@@ -12,10 +12,14 @@ Kirigami.ScrollablePage {
 
     readonly property var bat: Telemetry.battery || [false, 0, "unknown", -1]
 
-    // Feed the chart from real samples only.
-    Connections {
-        target: Telemetry
-        function onCpuTempChanged() { chart.push(Telemetry.cpuTemp, Telemetry.gpuTemp) }
+    // One chart sample per second while the page is on screen. The daemon
+    // only announces *changes*, so sampling on cpuTempChanged would freeze
+    // the time axis whenever the temperature is steady.
+    Timer {
+        interval: chart.sampleMs
+        running: page.visible && Bus.connected && Telemetry.intervalMs > 0
+        repeat: true
+        onTriggered: chart.push(Telemetry.cpuTemp || 0, Telemetry.gpuTemp || 0)
     }
 
     ColumnLayout {
@@ -74,13 +78,13 @@ Kirigami.ScrollablePage {
         }
 
         Card {
-            title: "Temperature, last 5 minutes"
+            title: "Temperature, last 10 minutes"
             RowLayout {
                 spacing: Kirigami.Units.largeSpacing
                 Rectangle { width: 10; height: 10; radius: 5; color: chart.colorA } Text { text: "CPU"; color: Kirigami.Theme.textColor }
                 Rectangle { width: 10; height: 10; radius: 5; color: chart.colorB } Text { text: "GPU"; color: Kirigami.Theme.textColor }
             }
-            Sparkline { id: chart; Layout.fillWidth: true; maxValue: 100; capacity: 600 }
+            Sparkline { id: chart; Layout.fillWidth: true; minValue: 20; maxValue: 100; gridStep: 20; capacity: 600; sampleMs: 1000 }
         }
     }
 }
