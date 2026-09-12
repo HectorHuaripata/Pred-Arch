@@ -11,6 +11,9 @@ Kirigami.ScrollablePage {
     padding: Kirigami.Units.largeSpacing * 2
 
     readonly property var bat: Telemetry.battery || [false, 0, "unknown", -1]
+    // [used MiB, total MiB]; absent on a daemon older than 2.1
+    readonly property var mem: Telemetry.memory || [0, 0]
+    readonly property real memPercent: mem[1] > 0 ? 100 * mem[0] / mem[1] : 0
 
     // One chart sample per second while the page is on screen. The daemon
     // only announces *changes*, so sampling on cpuTempChanged would freeze
@@ -42,14 +45,21 @@ Kirigami.ScrollablePage {
             title: "Right now"
             subtitle: Telemetry.intervalMs > 0 ? "updating every " + Telemetry.intervalMs + " ms" : "paused"
             GridLayout {
-                columns: page.width >= 720 ? 4 : 2
-                columnSpacing: Kirigami.Units.largeSpacing * 2
+                // 5 gauges of 8 grid units fit from ~840 px of page width
+                columns: Math.max(2, Math.min(5, Math.floor((page.width - 48) / (Kirigami.Units.gridUnit * 8 + Kirigami.Units.largeSpacing))))
+                columnSpacing: Kirigami.Units.largeSpacing
                 rowSpacing: Kirigami.Units.largeSpacing
                 Layout.alignment: Qt.AlignHCenter
                 Gauge { label: "CPU temperature"; unit: "°C"; maxValue: 110; value: Telemetry.cpuTemp || 0; accent: U.tempColor(Kirigami.Theme, value) }
                 Gauge { label: "GPU temperature"; unit: "°C"; maxValue: 110; value: Telemetry.gpuTemp || 0; accent: U.tempColor(Kirigami.Theme, value) }
                 Gauge { label: "CPU usage"; unit: "%"; value: Telemetry.cpuUsage || 0 }
                 Gauge { label: "GPU usage"; unit: "%"; value: Telemetry.gpuUsage || 0 }
+                Gauge {
+                    visible: page.mem[1] > 0
+                    label: "Memory"; unit: "%"; value: page.memPercent
+                    note: (page.mem[0] / 1024).toFixed(1) + " / " + (page.mem[1] / 1024).toFixed(1) + " GB"
+                    accent: page.memPercent >= 90 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.neutralTextColor
+                }
             }
         }
 

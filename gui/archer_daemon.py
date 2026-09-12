@@ -1060,6 +1060,22 @@ class HardwareManager:
         except ValueError:
             return 0, 0
 
+    def get_memory(self):
+        """(used_mib, total_mib): used = MemTotal - MemAvailable, like free(1).
+        One read of /proc/meminfo, ~8 µs."""
+        total = avail = 0
+        try:
+            with open("/proc/meminfo") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        total = int(line.split()[1])
+                    elif line.startswith("MemAvailable:"):
+                        avail = int(line.split()[1])
+                        break
+        except (OSError, ValueError, IndexError):
+            return 0, 0
+        return max(0, total - avail) // 1024, total // 1024
+
     def get_power_source(self):
         """Check if running on AC power."""
         for name in os.listdir(POWER_SUPPLY_DIR) if os.path.isdir(POWER_SUPPLY_DIR) else []:

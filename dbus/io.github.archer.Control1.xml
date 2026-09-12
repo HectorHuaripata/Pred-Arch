@@ -48,6 +48,9 @@
     <property name="GpuUsage"      type="y"  access="read"/>
     <property name="FanRpm"        type="(uu)" access="read"/>   <!-- cpu, gpu -->
     <property name="PowerSourceAc" type="b"  access="read"/>
+    <!-- RAM in use (MemTotal - MemAvailable, what `free` calls used) and
+         total, both in MiB. -->
+    <property name="Memory"        type="(uu)" access="read"/>
     <!-- present, percentage, status ("charging"|"discharging"|"full"|
          "idle" = plugged in and not charging|"unknown"), seconds to
          full/empty or -1 -->

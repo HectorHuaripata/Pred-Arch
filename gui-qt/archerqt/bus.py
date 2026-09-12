@@ -14,6 +14,7 @@ without any bridging.
 """
 
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -168,8 +169,12 @@ class ArcherBus(QObject):
             for m in iface.methods:
                 self._methods[(short, m.name)] = "".join(a.signature for a in m.in_args)
 
+        # ARCHER_BUS=session pairs with `archer_daemon.py --session-bus`
+        # for development without touching the installed daemon.
+        bus_type = (Gio.BusType.SESSION if os.environ.get("ARCHER_BUS") == "session"
+                    else Gio.BusType.SYSTEM)
         try:
-            self._conn = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+            self._conn = Gio.bus_get_sync(bus_type, None)
         except GLib.Error as e:
             self._set_error(f"System bus unavailable: {e.message}")
             return

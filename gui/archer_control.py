@@ -332,6 +332,7 @@ class TelemetrySampler:
                 "GpuUsage": max(0, min(100, int(self.hw.get_gpu_usage()))),
                 "FanRpm": (int(cpu_rpm or 0), int(gpu_rpm or 0)),
                 "PowerSourceAc": bool(self.hw.get_power_source()),
+                "Memory": tuple(int(v) for v in self.hw.get_memory()),
             }
             now = time.monotonic()
             if force_battery or now - self._last_battery >= BATTERY_PERIOD_S:

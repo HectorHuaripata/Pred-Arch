@@ -11,11 +11,12 @@ Item {
     property real maxValue: 100
     property string label: ""
     property string unit: ""
+    property string note: ""          // small line under the label, e.g. "9.3 / 23.4 GB"
     property color accent: Kirigami.Theme.highlightColor
     property int decimals: 0
 
     implicitWidth: Kirigami.Units.gridUnit * 8
-    implicitHeight: implicitWidth + caption.implicitHeight + Kirigami.Units.smallSpacing
+    implicitHeight: implicitWidth + caption.implicitHeight + (note !== "" ? noteText.implicitHeight : 0) + Kirigami.Units.smallSpacing
 
     readonly property real _target: Math.max(0, Math.min(maxValue, value))
     property real _shown: 0
@@ -81,5 +82,15 @@ Item {
         text: root.label
         color: Kirigami.Theme.textColor
         opacity: 0.8
+    }
+    Text {
+        id: noteText
+        anchors.top: caption.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        visible: root.note !== ""
+        text: root.note
+        color: Kirigami.Theme.textColor
+        opacity: 0.55
+        font.pointSize: Kirigami.Theme.smallFont.pointSize
     }
 }
