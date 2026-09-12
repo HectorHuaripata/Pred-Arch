@@ -92,3 +92,9 @@ jobs:
           # service registers, exposes Ping, GetMonitoringData, and the
           # TelemetryUpdated/AudioEnhancementChanged signals.
           dbus-run-session -- bash tests/dbus_smoke.sh
+      - name: Boot the daemon in --session-bus mode, exercise contract v2
+        run: |
+          # Starts gui/archer_daemon.py --session-bus (no root, no Acer
+          # hardware needed) and checks subscriber-driven telemetry,
+          # PropertiesChanged deltas and typed errors against the XML.
+          dbus-run-session -- python3 tests/dbus_v2_smoke.py

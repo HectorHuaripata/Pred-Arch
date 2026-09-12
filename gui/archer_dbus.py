@@ -70,11 +70,36 @@ class ArcherDBusService(dbus.service.Object):
         self._bus_name = dbus.service.BusName(DBUS_NAME, self._bus)
         super().__init__(self._bus, DBUS_PATH)
         logger.info(f"D-Bus service registered: {DBUS_NAME} at {DBUS_PATH}")
+        # v1 clients, by unique bus name. A client is noted on its first
+        # call and forgotten when its name leaves the bus, so the telemetry
+        # timer below does no sensor work once the old GUI is gone. The v2
+        # layer (archer_control) has its own subscriber accounting.
+        self._v1_clients = set()
+        try:
+            # One match rule, added non-blocking at init. Calling
+            # watch_name_owner() from inside a method handler would block
+            # the main-loop thread waiting for its own reply.
+            self._bus.add_signal_receiver(
+                self._on_name_owner_changed, signal_name="NameOwnerChanged",
+                dbus_interface="org.freedesktop.DBus", bus_name="org.freedesktop.DBus")
+        except Exception as e:
+            logger.warning(f"NameOwnerChanged subscription failed: {e}")
         # Push telemetry on a timer so the GUI doesn't have to poll. Returns
         # True so GLib keeps re-arming the timeout.
         GLib.timeout_add_seconds(TELEMETRY_INTERVAL_S, self._emit_telemetry)
 
+    def _note_client(self, sender):
+        if sender:
+            self._v1_clients.add(str(sender))
+
+    def _on_name_owner_changed(self, name, old_owner, new_owner):
+        if not new_owner and str(name) in self._v1_clients:
+            self._v1_clients.discard(str(name))
+            logger.info(f"v1 client {name} left the bus")
+
     def _emit_telemetry(self):
+        if not self._v1_clients:
+            return True
         try:
             payload = json.dumps(self.hw.get_monitoring_data())
             self.TelemetryUpdated(payload)
@@ -85,6 +110,7 @@ class ArcherDBusService(dbus.service.Object):
 
     def _authorize(self, command, sender):
         """Check polkit for mutating commands. Returns True if authorized."""
+        self._note_client(sender)
         action_id = POLKIT_ACTIONS.get(command)
         if not action_id:
             return True  # Read-only commands need no auth
@@ -99,21 +125,25 @@ class ArcherDBusService(dbus.service.Object):
     @dbus.service.method(DBUS_IFACE, in_signature="", out_signature="s",
                          sender_keyword="sender")
     def Ping(self, sender=None):
+        self._note_client(sender)
         return self._json_response({"success": True, "data": {"version": self.hw.settings.get("daemon_version", "2.0.1")}})
 
     @dbus.service.method(DBUS_IFACE, in_signature="", out_signature="s",
                          sender_keyword="sender")
     def GetAllSettings(self, sender=None):
+        self._note_client(sender)
         return self._json_response({"success": True, "data": self.hw.get_all_settings()})
 
     @dbus.service.method(DBUS_IFACE, in_signature="", out_signature="s",
                          sender_keyword="sender")
     def GetMonitoringData(self, sender=None):
+        self._note_client(sender)
         return self._json_response({"success": True, "data": self.hw.get_monitoring_data()})
 
     @dbus.service.method(DBUS_IFACE, in_signature="", out_signature="s",
                          sender_keyword="sender")
     def GetSupportedFeatures(self, sender=None):
+        self._note_client(sender)
         return self._json_response({"success": True, "data": {"features": self.hw.features}})
 
     @dbus.service.method(DBUS_IFACE, in_signature="", out_signature="s",

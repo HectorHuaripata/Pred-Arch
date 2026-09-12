@@ -28,6 +28,8 @@ module_install() {
     local _required=(
         "$SCRIPT_DIR/gui/archer_daemon.py"
         "$SCRIPT_DIR/gui/archer_dbus.py"
+        "$SCRIPT_DIR/gui/archer_control.py"
+        "$SCRIPT_DIR/dbus/io.github.archer.Control1.xml"
         "$SCRIPT_DIR/gui/archer_gui.py"
         "$SCRIPT_DIR/gui/io.otectus.Archer1.conf"
         "$SCRIPT_DIR/gui/io.otectus.Archer1.policy"
@@ -54,6 +56,11 @@ module_install() {
     log "Installing Archer GUI to $_GUI_INSTALL_DIR..."
     run_sudo cp "$SCRIPT_DIR/gui/archer_daemon.py" "$_GUI_INSTALL_DIR/"
     run_sudo cp "$SCRIPT_DIR/gui/archer_dbus.py" "$_GUI_INSTALL_DIR/"
+    run_sudo cp "$SCRIPT_DIR/gui/archer_control.py" "$_GUI_INSTALL_DIR/"
+    run_sudo cp "$SCRIPT_DIR/dbus/io.github.archer.Control1.xml" "$_GUI_INSTALL_DIR/"
+    if [[ -f "$SCRIPT_DIR/gui/archer_ene.py" ]]; then
+        run_sudo cp "$SCRIPT_DIR/gui/archer_ene.py" "$_GUI_INSTALL_DIR/"
+    fi
     run_sudo cp "$SCRIPT_DIR/gui/archer_gui.py" "$_GUI_INSTALL_DIR/"
     run_sudo cp -r "$SCRIPT_DIR/gui/archer" "$_GUI_INSTALL_DIR/"
     run_sudo cp -r "$SCRIPT_DIR/gui/assets" "$_GUI_INSTALL_DIR/"

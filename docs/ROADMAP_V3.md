@@ -21,22 +21,26 @@ Baseline to beat (window hidden to tray, 20 min uptime):
 - Fold the early-start drop-in into the unit (`b22571b`).
 - Delete `~/archer-fixes-backup`. Branch `v3` from here.
 
-## Step 2 — Daemon behind the v2 contract
+## Step 2 — Daemon behind the v2 contract  ✅ done on `v3`
 
 Contract: [`dbus/io.github.archer.Control1.xml`](../dbus/io.github.archer.Control1.xml) + [`DBUS_V2.md`](DBUS_V2.md).
 
-- [ ] `PropertyStore` + `Gio.DBusConnection` registration of the XML; v1 kept as a shim in the same process.
-- [ ] Telemetry: subscriber tracking via `NameOwnerChanged`, adaptive interval, delta-only emission, no subprocess.
-- [ ] Resolve hwmon/thermal paths once; NVML via ctypes.
-- [ ] `Thermal.Profile` watcher replaces `poll_profile_led` (same read, now also notifies clients).
-- [ ] Lighting coalescer (50 ms, last-state-wins, per device).
-- [ ] Typed errors; feature gate before polkit.
-- [ ] `tests/dbus_smoke.py` v2 pass.
-- Exit criterion: daemon idle CPU with no subscribers ≈ 0; old GUI still works.
+- [x] `gui/archer_control.py`: `PropertyStore` + `Gio.DBusConnection` registration of the XML; v1 kept as a shim in the same process.
+- [x] Telemetry: subscriber tracking via `NameOwnerChanged`, adaptive interval (250–5000 ms), delta-only emission, no subprocess; v1 `TelemetryUpdated` only while a v1 client is on the bus.
+- [x] Sensor paths resolved once (`_resolve_sensor_paths`), `/proc/stat` delta in Python, NVML via ctypes, GPU temperature from the EC hwmon (`acer` temp2) so the dGPU is not woken.
+- [x] Profile/ENE/fan-curve watcher every 2 s replaces the v1-only `poll_profile_led` timer and notifies clients.
+- [x] Lighting coalescer (50 ms, last-state-wins, per device; first write synchronous so its error reaches the caller).
+- [x] Typed errors (`…Error.NotAuthorized|Unsupported|InvalidArgument|HardwareFailure|Busy`); feature gate before polkit; polkit asynchronous.
+- [x] `tests/dbus_v2_smoke.py` (runs the daemon in `--session-bus` mode) wired into CI.
+- [ ] Deploy to `/opt/archer` and measure (needs `sudo ./install.sh` or copying the four files + `systemctl restart archer-daemon`).
+- Exit criterion met on the session bus: no sampling and no signals with zero subscribers; old GUI unaffected.
+
+Developer loop: `cd gui && python3 archer_daemon.py --session-bus`, then
+`busctl --user introspect io.github.archer.Control1 /io/github/archer/Control1`.
 
 ## Step 3 — New GUI
 
-Toolkit decision pending (see "Open decision" below). Whatever the toolkit:
+Toolkit decided 2026-09-11: **Qt 6 / QML with PySide6**. Plan:
 
 - [ ] Sidebar with 5–6 sections grouping today's 10 pages: Overview · Performance (profile, fans, curves, game mode) · Lighting (keyboard, button, logo) · Battery & Power (limiter, calibration, USB, wake) · Display & Audio · System (firmware, driver, maintenance).
 - [ ] Pages built on first visit, torn down never; each page binds to the properties it shows and nothing else.
@@ -53,7 +57,7 @@ Same procedure as the baseline (`/proc/<pid>/status`, 10 s tick sample with
 the window hidden). Targets: GUI ≤ 40 MB RSS hidden, ≤ 0.05 % CPU hidden,
 daemon ≈ 0 % with no subscribers.
 
-## Open decision — GUI toolkit
+## Toolkit decision (settled: Qt 6 / QML, PySide6)
 
 | | Qt 6 / QML (PySide6 first, C++ if needed) | GTK4 / libadwaita |
 |---|---|---|
@@ -63,5 +67,6 @@ daemon ≈ 0 % with no subscribers.
 | Tray | `QSystemTrayIcon` | SNI by hand (as today) |
 | Idle RSS | ~60–80 MB Python · ~25–35 MB C++ | ~50–70 MB Python · ~20 MB Rust |
 
-Recommendation: Qt 6 / QML with PySide6, because the machine runs KDE Plasma
-and live bindings are the whole point of the rewrite.
+Chosen: Qt 6 / QML with PySide6, because the machine runs KDE Plasma and
+live bindings are the whole point of the rewrite. C++ stays an option if
+idle RSS ends up mattering.

@@ -48,8 +48,9 @@
     <property name="GpuUsage"      type="y"  access="read"/>
     <property name="FanRpm"        type="(uu)" access="read"/>   <!-- cpu, gpu -->
     <property name="PowerSourceAc" type="b"  access="read"/>
-    <!-- present, percentage, status ("charging"|"discharging"|"full"|"unknown"),
-         seconds to full/empty or -1 -->
+    <!-- present, percentage, status ("charging"|"discharging"|"full"|
+         "idle" = plugged in and not charging|"unknown"), seconds to
+         full/empty or -1 -->
     <property name="Battery"       type="(bdsi)" access="read"/>
     <!-- Effective sampling interval in ms, 0 when idle. -->
     <property name="IntervalMs"    type="u"  access="read"/>

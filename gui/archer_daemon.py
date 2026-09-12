@@ -5,6 +5,7 @@ Runs as root, communicates with Linuwu-Sense driver via sysfs.
 Exposes a Unix socket for GUI communication.
 """
 
+import ctypes
 import json
 import logging
 import os
@@ -149,17 +150,83 @@ _PROBE_CACHE = _TtlCache(ttl_s=5.0)
 # laptops. Order is preference — first match wins. Anything else falls back
 # to the legacy "first device with fan1_input" behaviour.
 _HWMON_FAN_NAMES = (
-    "linuwu_sense", "acer_wmi", "nct6775", "nct6779", "nct6798",
+    "linuwu_sense", "acer_wmi", "acer", "nct6775", "nct6779", "nct6798",
     "it87", "dell_smm_hwmon",
 )
+# Thermal zone types that carry the CPU package temperature, best first.
+_CPU_THERMAL_TYPES = ("x86_pkg_temp", "coretemp", "k10temp", "cpu")
+# How long a resolved sensor path is trusted before it is looked up again
+# after a read failure (hwmon numbers move when a driver is reloaded).
+_SENSOR_REPROBE_S = 30
 _HWMON_GPU_TEMP_NAMES = ("nvidia", "amdgpu", "nouveau")
+
+
+class _Nvml:
+    """Minimal NVML binding for temperature and utilisation.
+
+    nvidia-smi is a ~100 ms subprocess; the same two numbers come out of
+    libnvidia-ml in microseconds. Lazily initialised, cached for ttl_s, and
+    silently unavailable when the library or a device is missing.
+    """
+
+    class _Util(ctypes.Structure):
+        _fields_ = [("gpu", ctypes.c_uint), ("memory", ctypes.c_uint)]
+
+    def __init__(self, ttl_s=2.0):
+        self._lib = None
+        self._handle = None
+        self._failed = False
+        self._cache = _TtlCache(ttl_s)
+
+    def _init(self):
+        if self._lib is not None or self._failed:
+            return self._lib is not None
+        try:
+            lib = ctypes.CDLL("libnvidia-ml.so.1")
+            if lib.nvmlInit_v2() != 0:
+                raise OSError("nvmlInit failed")
+            handle = ctypes.c_void_p()
+            if lib.nvmlDeviceGetHandleByIndex_v2(0, ctypes.byref(handle)) != 0:
+                raise OSError("no NVML device 0")
+            self._lib, self._handle = lib, handle
+            return True
+        except (OSError, AttributeError) as e:
+            logger.info(f"NVML unavailable ({e}); falling back to nvidia-smi")
+            self._failed = True
+            return False
+
+    def temperature(self):
+        return self._cache.get_or_compute("temp", self._read_temperature)
+
+    def utilization(self):
+        return self._cache.get_or_compute("util", self._read_utilization)
+
+    def _read_temperature(self):
+        if not self._init():
+            return None
+        value = ctypes.c_uint()
+        if self._lib.nvmlDeviceGetTemperature(self._handle, 0, ctypes.byref(value)) != 0:
+            return None
+        return int(value.value)
+
+    def _read_utilization(self):
+        if not self._init():
+            return None
+        util = self._Util()
+        if self._lib.nvmlDeviceGetUtilizationRates(self._handle, ctypes.byref(util)) != 0:
+            return None
+        return int(util.gpu)
+
+
+_NVML = _Nvml()
 
 
 # --- Persistent Settings Store ---
 class SettingsStore:
     """Saves and loads user-applied settings so they survive reboots."""
 
-    def __init__(self, path=SETTINGS_FILE):
+    def __init__(self, path=None):
+        path = path or SETTINGS_FILE
         self.path = path
         self._data = {}
         self._load()
@@ -329,6 +396,10 @@ class HardwareManager:
         self._detect_driver()
         self._detect_laptop_type()
         self._detect_features()
+        self._sensors = {}
+        self._sensors_probed_at = 0.0
+        self._cpu_stat_prev = None
+        self._resolve_sensor_paths()
         logger.info(f"Laptop type: {self.laptop_type}")
         logger.info(f"Driver base: {self.driver_base}")
         logger.info(f"Sense base: {self.sense_base}")
@@ -653,8 +724,10 @@ class HardwareManager:
                     h = int(hours)
                     m = int((hours - h) * 60)
                     info["time_remaining"] = f"{h}h {m}m"
+                    info["seconds_remaining"] = int(hours * 3600) if hours > 0 else -1
                 else:
                     info["time_remaining"] = ""
+                    info["seconds_remaining"] = -1
             except (ValueError, ZeroDivisionError):
                 info["time_remaining"] = ""
             break
@@ -835,27 +908,89 @@ class HardwareManager:
         return write_sysfs(path, "1" if enabled else "0")
 
     # --- System Monitoring ---
-    def get_cpu_temp(self):
-        """Get CPU temperature from thermal zones or hwmon."""
+    def _resolve_sensor_paths(self):
+        """Find the sysfs files behind the hot-path readers once.
+
+        Before this the daemon globbed /sys/class/hwmon and
+        /sys/class/thermal four or five times per telemetry tick. The files
+        do not move except when a driver is reloaded, which is handled by
+        re-probing after a failed read (see _sensor).
+        """
+        found = {}
+        # CPU: package temperature thermal zone, else coretemp hwmon.
         for tz in sorted(Path("/sys/class/thermal").glob("thermal_zone*")):
-            tz_type = read_sysfs(tz / "type")
-            if tz_type and any(k in tz_type.lower() for k in ["x86_pkg", "coretemp", "k10temp", "cpu"]):
-                val = read_sysfs(tz / "temp")
-                if val:
-                    return int(val) // 1000
-        # Fallback: first thermal zone
-        val = read_sysfs("/sys/class/thermal/thermal_zone0/temp")
-        return int(val) // 1000 if val else 0
+            tz_type = (read_sysfs(tz / "type") or "").lower()
+            if any(k in tz_type for k in _CPU_THERMAL_TYPES):
+                found["cpu_temp"] = tz / "temp"
+                break
+        hwmons = {}
+        for hwmon in sorted(Path("/sys/class/hwmon").glob("hwmon*")):
+            name = (read_sysfs(hwmon / "name") or "").lower()
+            hwmons.setdefault(name, hwmon)
+        if "cpu_temp" not in found and "coretemp" in hwmons:
+            found["cpu_temp"] = hwmons["coretemp"] / "temp1_input"
+        if "cpu_temp" not in found:
+            found["cpu_temp"] = Path("/sys/class/thermal/thermal_zone0/temp")
+        # GPU temperature: a GPU driver's own hwmon first. Otherwise the
+        # Acer EC exposes it as temp2 of its "acer"/linuwu_sense hwmon on the
+        # Predator line (verified against NVML on the PHN16S-71), which has
+        # the large advantage of not waking a runtime-suspended dGPU.
+        for name in _HWMON_GPU_TEMP_NAMES:
+            if name in hwmons:
+                found["gpu_temp"] = hwmons[name] / "temp1_input"
+                break
+        if "gpu_temp" not in found:
+            for name in ("linuwu_sense", "acer", "acer_wmi"):
+                candidate = hwmons.get(name, Path("/nonexistent")) / "temp2_input"
+                if candidate.exists():
+                    found["gpu_temp"] = candidate
+                    break
+        if "amdgpu" in hwmons:
+            found["gpu_busy"] = hwmons["amdgpu"] / "device/gpu_busy_percent"
+        # Fans: allowlisted chipsets, else the first device with fan1_input.
+        for name in _HWMON_FAN_NAMES:
+            if name in hwmons and (hwmons[name] / "fan1_input").exists():
+                found["fan"] = hwmons[name]
+                break
+        if "fan" not in found:
+            for hwmon in sorted(Path("/sys/class/hwmon").glob("hwmon*")):
+                if (hwmon / "fan1_input").exists():
+                    found["fan"] = hwmon
+                    break
+        self._sensors = found
+        self._sensors_probed_at = time.monotonic()
+        logger.info("Sensor paths: " + ", ".join(f"{k}={v}" for k, v in found.items()))
+
+    def _sensor(self, key):
+        """Read a resolved sensor file; re-probe once per _SENSOR_REPROBE_S
+        if the file went away (driver reload renumbers hwmon)."""
+        path = self._sensors.get(key)
+        val = read_sysfs(path) if path else None
+        if val is None and time.monotonic() - self._sensors_probed_at > _SENSOR_REPROBE_S:
+            self._resolve_sensor_paths()
+            path = self._sensors.get(key)
+            val = read_sysfs(path) if path else None
+        return val
+
+    def get_cpu_temp(self):
+        """CPU package temperature in whole degrees."""
+        val = self._sensor("cpu_temp")
+        try:
+            return int(val) // 1000 if val else 0
+        except ValueError:
+            return 0
 
     def get_gpu_temp(self):
-        """Get GPU temperature from hwmon."""
-        for hwmon in sorted(Path("/sys/class/hwmon").glob("hwmon*")):
-            name = read_sysfs(hwmon / "name")
-            if name and name.lower() in _HWMON_GPU_TEMP_NAMES:
-                val = read_sysfs(hwmon / "temp1_input")
-                if val:
-                    return int(val) // 1000
-        # Try nvidia-smi (cached; the binary is slow, sometimes hangs)
+        """GPU temperature: hwmon file, else NVML, else nvidia-smi (cached)."""
+        val = self._sensor("gpu_temp")
+        if val:
+            try:
+                return int(val) // 1000
+            except ValueError:
+                pass
+        temp = _NVML.temperature()
+        if temp is not None:
+            return temp
         temp = _PROBE_CACHE.get_or_compute(
             "nvidia-smi-temp",
             lambda: run_cmd(
@@ -868,17 +1003,37 @@ class HardwareManager:
         return 0
 
     def get_cpu_usage(self):
-        """Get CPU usage percentage."""
-        # Static literal awk pipeline; shell_meta_ok=True intentionally.
-        usage = run_cmd(
-            "awk '/^cpu / {u=$2+$4; t=$2+$4+$5; printf \"%.0f\", u/t*100}' /proc/stat",
-            shell_meta_ok=True,
-        )
-        return int(usage) if usage and usage.isdigit() else 0
+        """CPU usage percent over the interval since the previous call.
+
+        Reads /proc/stat directly (the old awk pipeline forked a process per
+        tick) and computes a delta, which is what "usage" means; the previous
+        cumulative-since-boot ratio was a lifetime average. The first call
+        has nothing to compare against and returns 0.
+        """
+        try:
+            with open("/proc/stat") as f:
+                fields = f.readline().split()
+            values = [int(x) for x in fields[1:9]]
+        except (OSError, ValueError, IndexError):
+            return 0
+        idle = values[3] + values[4]          # idle + iowait
+        total = sum(values)
+        prev = self._cpu_stat_prev
+        self._cpu_stat_prev = (idle, total)
+        if prev is None or total <= prev[1]:
+            return 0
+        d_total = total - prev[1]
+        d_idle = idle - prev[0]
+        return int(round(100 * (d_total - d_idle) / d_total))
 
     def get_gpu_usage(self):
-        """Get GPU usage from nvidia-smi or amdgpu."""
-        # NVIDIA (cached)
+        """GPU utilisation: NVML, else amdgpu busy file, else nvidia-smi."""
+        util = _NVML.utilization()
+        if util is not None:
+            return util
+        val = self._sensor("gpu_busy")
+        if val and val.isdigit():
+            return int(val)
         val = _PROBE_CACHE.get_or_compute(
             "nvidia-smi-util",
             lambda: run_cmd(
@@ -888,42 +1043,22 @@ class HardwareManager:
         )
         if val and val.isdigit():
             return int(val)
-        # AMD
-        for hwmon in Path("/sys/class/hwmon").glob("hwmon*"):
-            name = read_sysfs(hwmon / "name")
-            if name and name.lower() == "amdgpu":
-                val = read_sysfs(hwmon / "device/gpu_busy_percent")
-                if val:
-                    return int(val)
         return 0
 
     def get_fan_rpm(self):
-        """Get fan RPM from hwmon. Prefer Acer-relevant chipsets by name."""
-        cpu_rpm, gpu_rpm = 0, 0
-        # Pass 1: allowlisted chipsets only.
-        for hwmon in sorted(Path("/sys/class/hwmon").glob("hwmon*")):
-            name = read_sysfs(hwmon / "name") or ""
-            if name.lower() not in _HWMON_FAN_NAMES:
-                continue
-            fan1 = read_sysfs(hwmon / "fan1_input")
-            fan2 = read_sysfs(hwmon / "fan2_input")
-            if fan1:
-                cpu_rpm = int(fan1)
-            if fan2:
-                gpu_rpm = int(fan2)
-            if cpu_rpm or gpu_rpm:
-                return cpu_rpm, gpu_rpm
-        # Pass 2 (fallback): the legacy "first device with fan1_input" rule.
-        for hwmon in sorted(Path("/sys/class/hwmon").glob("hwmon*")):
-            fan1 = read_sysfs(hwmon / "fan1_input")
-            fan2 = read_sysfs(hwmon / "fan2_input")
-            if fan1:
-                cpu_rpm = int(fan1)
-            if fan2:
-                gpu_rpm = int(fan2)
-            if cpu_rpm or gpu_rpm:
-                break
-        return cpu_rpm, gpu_rpm
+        """Fan RPM (cpu, gpu) from the hwmon resolved at startup."""
+        hwmon = self._sensors.get("fan")
+        if hwmon is None:
+            return 0, 0
+        fan1 = read_sysfs(hwmon / "fan1_input")
+        fan2 = read_sysfs(hwmon / "fan2_input")
+        if fan1 is None and time.monotonic() - self._sensors_probed_at > _SENSOR_REPROBE_S:
+            self._resolve_sensor_paths()
+            return self.get_fan_rpm()
+        try:
+            return int(fan1 or 0), int(fan2 or 0)
+        except ValueError:
+            return 0, 0
 
     def get_power_source(self):
         """Check if running on AC power."""
@@ -1282,15 +1417,28 @@ def cleanup_pid():
 
 
 def main():
-    if os.geteuid() != 0:
+    # Developer mode: `archer_daemon.py --session-bus` runs as an ordinary
+    # user on the session bus with a scratch settings file. Only the v2
+    # (GDBus) interface is served, polkit is skipped, sysfs writes fail
+    # harmlessly. Enough to exercise the contract without touching the
+    # installed daemon.
+    dev_mode = "--session-bus" in sys.argv[1:]
+
+    if not dev_mode and os.geteuid() != 0:
         print("Error: Archer daemon must run as root.", file=sys.stderr)
         sys.exit(1)
 
-    setup_logging()
-    logger.info(f"Archer Daemon v{VERSION} starting...")
-
-    write_pid()
-    settings = SettingsStore()
+    if dev_mode:
+        logging.basicConfig(level=logging.INFO,
+                            format="%(asctime)s [%(levelname)s] %(message)s")
+        run_dir = os.environ.get("XDG_RUNTIME_DIR") or "/tmp"
+        settings = SettingsStore(path=os.path.join(run_dir, "archer-dev-settings.json"))
+        logger.info(f"Archer Daemon v{VERSION} starting in --session-bus mode")
+    else:
+        setup_logging()
+        logger.info(f"Archer Daemon v{VERSION} starting...")
+        write_pid()
+        settings = SettingsStore()
     hw = HardwareManager(settings_store=settings)
 
     # D-Bus is mandatory. The previous Unix-socket fallback was unreachable
@@ -1308,19 +1456,38 @@ def main():
         cleanup_pid()
         sys.exit(1)
 
+    main_loop = GLib.MainLoop()
+    _dbus_service = None
+    if not dev_mode:
+        try:
+            dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+            _dbus_service = ArcherDBusService(hw)  # noqa: F841 — prevent GC
+            logger.info("D-Bus service registered (io.otectus.Archer1)")
+        except Exception as e:
+            logger.error(
+                f"Failed to register D-Bus service: {e}. "
+                "Check that /etc/dbus-1/system.d/io.otectus.Archer1.conf exists "
+                "and 'systemctl reload dbus.service' has been run."
+            )
+            cleanup_pid()
+            sys.exit(1)
+
+    # Contract v2 (io.github.archer.Control1) on GDBus, alongside v1. Its
+    # absence is not fatal while the old GUI is the only client, but it is
+    # logged loudly because the new GUI needs it.
+    _control = None
     try:
-        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
-        _dbus_service = ArcherDBusService(hw)  # noqa: F841 — prevent GC
-        main_loop = GLib.MainLoop()
-        logger.info("D-Bus service registered (io.otectus.Archer1)")
-    except Exception as e:
-        logger.error(
-            f"Failed to register D-Bus service: {e}. "
-            "Check that /etc/dbus-1/system.d/io.otectus.Archer1.conf exists "
-            "and 'systemctl reload dbus.service' has been run."
+        from gi.repository import Gio
+        from archer_control import ArcherControl
+        _control = ArcherControl(  # noqa: F841 — prevent GC
+            hw,
+            bus_type=Gio.BusType.SESSION if dev_mode else Gio.BusType.SYSTEM,
+            ene_module=archer_ene,
         )
-        cleanup_pid()
-        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Contract v2 (io.github.archer.Control1) not available: {e}")
+        if dev_mode:
+            sys.exit(1)
 
     # Reapply lighting after resume. Neither acer_suspend() nor acer_resume()
     # in the driver touch RGB, and the ENE loses our state across the sleep, so
@@ -1338,6 +1505,8 @@ def main():
             GLib.timeout_add_seconds(
                 2, lambda: (hw.reapply_lighting(), False)[1])
 
+        if dev_mode:
+            raise RuntimeError("skipped in --session-bus mode")
         system_bus = dbus.SystemBus()
         system_bus.add_signal_receiver(
             _on_prepare_for_sleep,
@@ -1348,8 +1517,11 @@ def main():
         logger.info("Listening for resume to reapply lighting")
 
         # Catch profile changes made outside Archer, so the button LED cannot
-        # drift out of step with the machine.
-        GLib.timeout_add_seconds(3, hw.poll_profile_led)
+        # drift out of step with the machine. The v2 layer polls the profile
+        # itself (and notifies clients); only fall back to this when it is
+        # not running.
+        if _control is None:
+            GLib.timeout_add_seconds(3, hw.poll_profile_led)
     except Exception as e:
         # Not fatal: everything else still works, lighting just will not
         # survive a suspend.
@@ -1363,8 +1535,11 @@ def main():
         logger.info("Shutting down...")
         hw.shutdown_fan_curves()
         hw.deactivate_game_mode()
+        if _control is not None:
+            _control.stop()
         main_loop.quit()
-        cleanup_pid()
+        if not dev_mode:
+            cleanup_pid()
         sys.exit(0)
 
     signal.signal(signal.SIGTERM, signal_handler)
@@ -1377,7 +1552,8 @@ def main():
     finally:
         hw.shutdown_fan_curves()
         hw.deactivate_game_mode()
-        cleanup_pid()
+        if not dev_mode:
+            cleanup_pid()
         logger.info("Daemon stopped.")
 
 
