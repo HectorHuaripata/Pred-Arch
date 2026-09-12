@@ -63,7 +63,8 @@ Kirigami.ApplicationWindow {
 
                     RowLayout {
                         spacing: Kirigami.Units.largeSpacing
-                        Kirigami.Icon { source: App.iconPath !== "" ? App.iconPath : "computer"; Layout.preferredWidth: Kirigami.Units.iconSizes.medium; Layout.preferredHeight: Kirigami.Units.iconSizes.medium }
+                        // The Archer SVG is white; tint it with the theme's text colour so it reads on light schemes too.
+                        Kirigami.Icon { source: App.iconPath !== "" ? App.iconPath : "computer"; isMask: App.iconPath !== ""; color: Kirigami.Theme.textColor; Layout.preferredWidth: Kirigami.Units.iconSizes.medium; Layout.preferredHeight: Kirigami.Units.iconSizes.medium }
                         ColumnLayout {
                             spacing: 0
                             Kirigami.Heading { level: 2; text: "Archer" }
