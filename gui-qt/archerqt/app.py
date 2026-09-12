@@ -237,12 +237,15 @@ def main(argv=None):
 
     bus = ArcherBus()
     controller = AppController(bus)
+    # Context properties are not owned by the engine: every object handed
+    # to QML must stay referenced here for the life of the application.
+    history = History()
 
     engine = QQmlApplicationEngine()
     ctx = engine.rootContext()
     ctx.setContextProperty("Bus", bus)
     ctx.setContextProperty("App", controller)
-    ctx.setContextProperty("History", History())
+    ctx.setContextProperty("History", history)
     for short, obj in bus.interfaces.items():
         ctx.setContextProperty(short, obj)
     engine.load(QUrl.fromLocalFile(str(QML_DIR / "Main.qml")))
