@@ -8,6 +8,11 @@ MODULE_DESCRIPTION="GTK4/Adwaita control panel and hardware daemon"
 
 _GUI_INSTALL_DIR="/opt/archer"
 _GUI_SERVICE="/etc/systemd/system/archer-daemon.service"
+# System bus policy directory. Arch ships dbus-broker with only
+# /usr/share/dbus-1/system.d; Debian-style systems have /etc/dbus-1/system.d.
+# Both are read by the bus; use whichever exists (prefer /etc if both).
+_GUI_DBUS_POLICY_DIR="/etc/dbus-1/system.d"
+[[ -d "$_GUI_DBUS_POLICY_DIR" ]] || _GUI_DBUS_POLICY_DIR="/usr/share/dbus-1/system.d"
 _GUI_DESKTOP="/usr/share/applications/io.github.archer.desktop"
 _GUI_ICON="/usr/share/icons/hicolor/scalable/apps/io.github.archer.svg"
 _GUI_LAUNCHER="/usr/local/bin/archer-gui"
@@ -67,7 +72,8 @@ module_install() {
 
     # Install D-Bus service configuration
     log "Installing D-Bus and polkit configuration..."
-    run_sudo cp "$SCRIPT_DIR/gui/io.otectus.Archer1.conf" /etc/dbus-1/system.d/
+    run_sudo mkdir -p "$_GUI_DBUS_POLICY_DIR"
+    run_sudo cp "$SCRIPT_DIR/gui/io.otectus.Archer1.conf" "$_GUI_DBUS_POLICY_DIR/"
     run_sudo cp "$SCRIPT_DIR/gui/io.otectus.Archer1.policy" /usr/share/polkit-1/actions/
 
     # Reload dbus-daemon so the new policy file takes effect immediately.
@@ -139,7 +145,7 @@ LAUNCHER_EOF
     log "Start the GUI:  archer-gui"
     log "Daemon status:  sudo systemctl status archer-daemon"
 
-    INSTALLED_FILES+=" $_GUI_INSTALL_DIR $_GUI_SERVICE $_GUI_DESKTOP $_GUI_ICON $_GUI_LAUNCHER $_GUI_SETTINGS_DIR /etc/dbus-1/system.d/io.otectus.Archer1.conf /usr/share/polkit-1/actions/io.otectus.Archer1.policy"
+    INSTALLED_FILES+=" $_GUI_INSTALL_DIR $_GUI_SERVICE $_GUI_DESKTOP $_GUI_ICON $_GUI_LAUNCHER $_GUI_SETTINGS_DIR $_GUI_DBUS_POLICY_DIR/io.otectus.Archer1.conf /usr/share/polkit-1/actions/io.otectus.Archer1.policy"
     INSTALLED_PACKAGES+=" python-gobject gtk4 libadwaita python-pillow python-dbus"
 }
 
@@ -157,7 +163,7 @@ module_uninstall() {
     run_sudo rm -rf "$_GUI_SETTINGS_DIR"
 
     log "Removing D-Bus and polkit configuration..."
-    run_sudo rm -f /etc/dbus-1/system.d/io.otectus.Archer1.conf
+    run_sudo rm -f /etc/dbus-1/system.d/io.otectus.Archer1.conf /usr/share/dbus-1/system.d/io.otectus.Archer1.conf
     run_sudo rm -f /usr/share/polkit-1/actions/io.otectus.Archer1.policy
 
     # Reload dbus-daemon so the removed policy stops being active immediately.

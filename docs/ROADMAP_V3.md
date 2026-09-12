@@ -32,7 +32,7 @@ Contract: [`dbus/io.github.archer.Control1.xml`](../dbus/io.github.archer.Contro
 - [x] Lighting coalescer (50 ms, last-state-wins, per device; first write synchronous so its error reaches the caller).
 - [x] Typed errors (`…Error.NotAuthorized|Unsupported|InvalidArgument|HardwareFailure|Busy`); feature gate before polkit; polkit asynchronous.
 - [x] `tests/dbus_v2_smoke.py` (runs the daemon in `--session-bus` mode) wired into CI.
-- [ ] Deploy to `/opt/archer` and measure (needs `sudo ./install.sh` or copying the four files + `systemctl restart archer-daemon`).
+- [ ] Deploy to `/opt/archer` and measure. On Arch the bus policy dir is `/usr/share/dbus-1/system.d` (the installer now detects it).
 - Exit criterion met on the session bus: no sampling and no signals with zero subscribers; old GUI unaffected.
 
 Developer loop: `cd gui && python3 archer_daemon.py --session-bus`, then

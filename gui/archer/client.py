@@ -67,7 +67,7 @@ _DBUS_METHOD_MAP = {
 DAEMON_OFFLINE_HINT = (
     "Daemon unreachable. Check 'systemctl status archer-daemon' and "
     "'journalctl -u archer-daemon -n 50'. If the policy file was just "
-    "installed, run 'sudo systemctl reload dbus.service'."
+    "installed, run 'sudo systemctl reload dbus.service'. On Arch the policy dir is /usr/share/dbus-1/system.d."
 )
 
 
