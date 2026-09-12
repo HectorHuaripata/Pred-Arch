@@ -35,6 +35,16 @@ module_install() {
     run_sudo rm -rf "$src_dir"
     run_sudo git clone "$REPO_DRIVER" "$src_dir"
 
+    # Kernel 7.2 dropped the implicit strncpy declaration and the driver
+    # still calls it in three sysfs store handlers (fan speed, per-zone
+    # colour, effect). Every call copies min(count, sizeof - 1) bytes and
+    # NUL-terminates by hand, so memcpy is an exact replacement. Applied
+    # until upstream Linuwu-Sense carries the fix.
+    if grep -q 'strncpy(' "$src_dir/src/linuwu_sense.c"; then
+        log "Patching linuwu_sense.c for kernels >= 7.2 (strncpy -> memcpy)..."
+        run_sudo sed -i 's/\bstrncpy(/memcpy(/' "$src_dir/src/linuwu_sense.c"
+    fi
+
     # Use centralized Clang detection from detect_kernel()
     local make_flags="$CLANG_BUILD_FLAGS"
     if [[ "$IS_CLANG_KERNEL" -eq 1 ]]; then
