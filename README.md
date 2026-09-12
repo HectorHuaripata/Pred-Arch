@@ -1,8 +1,23 @@
-# Archer Compatibility Suite
+# Archer
 
-Have an Acer laptop running Arch Linux? You're in the right place.
+Control panel and daemon for Acer Predator / Nitro laptops on Arch Linux: performance
+profiles, fans, keyboard and LED lighting, battery, GPU mode — live, native to the
+desktop, and light enough to leave running.
 
-![Archer Compatibility Suite](https://i.imgur.com/KvbGFQw.png)
+| Overview | Lighting |
+|---|---|
+| ![Overview, dark](docs/screenshots/overview-dark.png) | ![Lighting, dark](docs/screenshots/lighting-dark.png) |
+| ![Overview, light](docs/screenshots/overview-light.png) | ![Lighting, light](docs/screenshots/lighting-light.png) |
+
+Maintained by [Hector Huaripata](https://github.com/HectorHuaripata). Developed and
+verified on a Predator Helios Neo 16S AI (PHN16S-71); the installer's module system,
+driver integration and daemon core come from [otectus/Archer](https://github.com/otectus/Archer)
+(MIT), which this project started from. What is new here — see `CHANGELOG.md` —
+is the Qt 6 / QML panel, the typed D-Bus contract (`docs/DBUS_V2.md`), the ENE K5130
+lighting backend (`docs/ENE_PROTOCOL.md`) and a daemon that does no work while nobody
+is looking.
+
+## The compatibility suite
 
 A modular compatibility suite for Acer laptops running Arch Linux and Arch-based distributions. Provides hardware-aware detection, kernel driver installation, a Qt 6 / QML control panel with D-Bus IPC and polkit authorization, and targeted fixes for a broad range of Acer laptop issues on Linux.
 

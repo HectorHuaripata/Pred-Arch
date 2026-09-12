@@ -19,9 +19,40 @@ Install on Arch:
 sudo pacman -S shellcheck bash-bats python
 ```
 
+## Code layout
+
+| Path | What |
+|---|---|
+| `gui/archer_daemon.py` | root daemon: hardware access, settings, fan curves |
+| `gui/archer_control/` | D-Bus contract v2 — one module per concern, one mixin per interface (`interfaces/`) |
+| `gui/archer_dbus.py` | legacy `io.otectus.Archer1` JSON interface, kept for scripts until 3.0 |
+| `gui/archer_ene.py` | ENE K5130 keyboard/LED backend |
+| `dbus/io.github.archer.Control1.xml` | the contract; the daemon registers it, clients generate from it |
+| `gui-qt/` | the Qt 6 / QML panel (`gui-qt/README.md` describes its modules and conventions) |
+| `modules/`, `lib/` | installer modules and helpers (bash) |
+
+Conventions that reviews check for:
+
+* Python follows PEP 8; anything QML sees is camelCase (Qt convention).
+* No literal paths, thresholds or cadences outside `constants.py` / `paths.py` / `settings.py`.
+* Every user-visible string goes through `qsTr()` or `QCoreApplication.translate()`.
+* Daemon: never poll a WMI-backed sysfs attribute (13–20 ms of CPU each on Predator);
+  read on demand, on notification, or once at startup.
+* Setters write the hardware first and save the setting after, so a refused write
+  leaves nothing half-applied.
+
+## Developing without touching the installed daemon
+
+    python3 gui/archer_daemon.py --session-bus &         # v2 only, as your user
+    ARCHER_BUS=session python3 gui-qt/archer_qt.py       # the panel against it
+    busctl --user introspect io.github.archer.Control1 /io/github/archer/Control1
+
 ## Running Tests
 
 ```bash
+# D-Bus contract v2 (no root, no hardware needed)
+dbus-run-session -- python3 tests/dbus_v2_smoke.py
+
 # Run all tests
 bats tests/
 

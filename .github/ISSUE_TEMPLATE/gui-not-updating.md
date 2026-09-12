@@ -1,6 +1,6 @@
 ---
 name: GUI not updating / daemon unreachable
-about: Use this when the Archer GUI shows stale data, says "Daemon Offline" / "Stale", or won't open at all.
+about: Use this when the Archer panel shows stale data, says "Daemon offline", or won't open at all.
 title: "[GUI] "
 labels: [gui]
 assignees: []
@@ -51,7 +51,7 @@ PASTE OUTPUT HERE
 ## D-Bus visibility
 
 <details>
-<summary><code>busctl list | grep -i archer</code></summary>
+<summary><code>busctl list | grep -i archer; busctl introspect io.github.archer.Control1 /io/github/archer/Control1 io.github.archer.Control1.Telemetry</code></summary>
 
 ```
 PASTE OUTPUT HERE
