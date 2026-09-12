@@ -114,7 +114,8 @@ class DisplayPage(Gtk.Box):
         self._mode_group.set_visible(has_display_mode)
 
         if has_display_mode:
-            mode = data.get("display_mode", "hybrid")
+            raw_mode = data.get("display_mode", "hybrid")
+            mode = raw_mode.get("mode", "hybrid") if isinstance(raw_mode, dict) else raw_mode
             self._current_mode = mode
             self._update_mode_display(mode)
 
@@ -145,7 +146,7 @@ class DisplayPage(Gtk.Box):
             "hybrid": "Hybrid",
             "nvidia": "NVIDIA",
         }
-        self._mode_row.set_subtitle(mode_labels.get(mode, mode.title()))
+        self._mode_row.set_subtitle(mode_labels.get(mode, str(mode).title()))
 
         for mode_key, (row, btn) in self._mode_rows.items():
             if mode_key == mode:

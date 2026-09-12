@@ -12,6 +12,9 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw  # noqa: F401 — required to init Adw before use
 
+from dbus.mainloop.glib import DBusGMainLoop
+DBusGMainLoop(set_as_default=True)
+
 from archer.application import ArcherApplication
 
 
