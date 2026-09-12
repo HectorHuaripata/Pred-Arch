@@ -25,6 +25,10 @@ try:
 except Exception:  # pragma: no cover - absence is a supported configuration
     archer_ene = None
 
+# How long to keep looking for the ENE controller after startup before
+# accepting that this machine does not have one. See schedule_ene_retry().
+ENE_RETRY_SECONDS = 20
+
 # --- Configuration ---
 # /run/archer is created by systemd via RuntimeDirectory=archer in the unit
 # file. The PID location matches PIDFile= in archer-daemon.service.
@@ -694,6 +698,50 @@ class HardwareManager:
                 self._sync_button_led(profile)
         return True
 
+    def schedule_ene_retry(self):
+        """Keep looking for the ENE controller if it was not up at startup.
+
+        The I2C-HID device can take a couple of seconds to answer after boot —
+        the kernel even logs "device did not ack reset within 1000 ms" for it.
+        Once the daemon is ordered early enough to beat the login screen that
+        race becomes real: a single check at startup can miss the controller
+        and strand the whole session on the sysfs fallback, which does not
+        apply colour on this model, until someone restarts the daemon by hand.
+
+        Polling from the main loop rather than blocking in _detect_features
+        keeps startup instant on hardware that genuinely has no ENE.
+        """
+        if self.ene_ready or not archer_ene:
+            return
+        self._ene_retry_left = ENE_RETRY_SECONDS
+        GLib.timeout_add_seconds(1, self._retry_ene)
+
+    def _retry_ene(self):
+        self._ene_retry_left -= 1
+        try:
+            found = archer_ene.available()
+        except Exception:
+            found = False
+
+        if not found:
+            if self._ene_retry_left > 0:
+                return True                     # keep polling
+            logger.info("ENE controller never appeared; staying on the "
+                        "sysfs/WMI fallback for this session")
+            return False
+
+        self.ene_ready = True
+        for feature in ("keyboard_per_zone", "keyboard_effects"):
+            if feature not in self.features:
+                self.features.append(feature)
+        logger.info("Keyboard lighting: ENE K5130 backend active "
+                    "(appeared %ds after startup)",
+                    ENE_RETRY_SECONDS - self._ene_retry_left)
+        # The settings restore already ran with no working backend, so the
+        # saved colours were never actually applied. Apply them now.
+        self.reapply_lighting()
+        return False
+
     def reapply_lighting(self):
         """Re-send the saved lighting state. Called after resume.
 
@@ -1306,6 +1354,10 @@ def main():
         # Not fatal: everything else still works, lighting just will not
         # survive a suspend.
         logger.warning(f"Could not subscribe to PrepareForSleep: {e}")
+
+    # Independent of the D-Bus subscription above: if the LED controller was
+    # not up yet when features were detected, keep looking for it.
+    hw.schedule_ene_retry()
 
     def signal_handler(sig, frame):
         logger.info("Shutting down...")
