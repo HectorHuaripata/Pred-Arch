@@ -5,6 +5,7 @@ Thermal: platform profile, fan duty and fan curves.
 from archer_control.common import ControlError
 from archer_control.constants import FAN_CURVE_TARGETS
 
+
 class ThermalInterface:
     """Value builder and setters for io.github.archer.Control1.Thermal."""
 
@@ -33,7 +34,6 @@ class ThermalInterface:
             "FanSpeed": (int(cpu or 0), int(gpu or 0)),
             "FanCurves": curves,
         }
-
 
     def _m_Thermal_SetProfile(self, sender, profile):
         ok, err = self.hw.set_thermal_profile(profile)
@@ -75,4 +75,3 @@ class ThermalInterface:
             raise ControlError("InvalidArgument", f"target must be one of {FAN_CURVE_TARGETS}")
         self.hw.stop_fan_curve(target)
         self.store.update(self._iface("Thermal"), self._thermal_values())
-

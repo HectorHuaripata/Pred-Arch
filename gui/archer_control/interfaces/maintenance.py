@@ -7,6 +7,7 @@ from pathlib import Path
 from archer_control.common import ControlError
 from archer_control.constants import MODPROBE_CONF, MODPROBE_PARAMS
 
+
 class MaintenanceInterface:
     """Value builder and methods for io.github.archer.Control1.Maintenance."""
 
@@ -20,7 +21,6 @@ class MaintenanceInterface:
         except OSError:
             pass
         return ""
-
 
     def _m_Maintenance_SetModprobeParameter(self, sender, parameter):
         if parameter not in MODPROBE_PARAMS:

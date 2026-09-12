@@ -3,7 +3,6 @@ System: static facts about the machine and the daemon.
 """
 
 
-
 class SystemInterface:
     """Value builder and Ping for io.github.archer.Control1.System."""
 
@@ -23,7 +22,5 @@ class SystemInterface:
             "EneReady": bool(getattr(self.hw, "ene_ready", False)),
         }
 
-
     def _m_System_Ping(self, sender):
         return None
-

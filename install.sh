@@ -234,7 +234,7 @@ run_selected_modules() {
             # GUI dependency warning (driver-or-already-installed check)
             if [[ "$id" = "gui" ]]; then
                 if ! is_in_list "driver" "${installed_names[*]}" && \
-                   ! dkms status 2>/dev/null | grep -q "linuwu-sense"; then
+                   ! dkms status 2>/dev/null | grep "linuwu-sense" >/dev/null; then
                     warn "Linuwu-Sense driver not installed. The daemon will have limited functionality."
                     warn "Consider installing the 'driver' module for full hardware control."
                 fi

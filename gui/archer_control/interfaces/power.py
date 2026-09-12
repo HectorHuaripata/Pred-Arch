@@ -6,6 +6,7 @@ from pathlib import Path
 
 from archer_control.common import ControlError
 
+
 class PowerInterface:
     """Value builder and setters for io.github.archer.Control1.Power."""
 
@@ -28,7 +29,6 @@ class PowerInterface:
             "BootAnimationSound": bool(self.hw.get_boot_animation_sound()),
             "UsbWakeSources": sources,
         }
-
 
     def _m_Power_SetGameMode(self, sender, enabled):
         if enabled:
@@ -54,4 +54,3 @@ class PowerInterface:
         if not self.hw.set_usb_wake(device, bool(enabled)):
             raise ControlError("InvalidArgument", f"unknown wake device {device!r}")
         self.store.update(self._iface("Power"), self._power_values())
-

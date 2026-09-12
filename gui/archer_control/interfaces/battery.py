@@ -4,6 +4,7 @@ Battery: charge limiter, calibration, USB charging while asleep.
 
 from archer_control.common import ControlError
 
+
 class BatteryInterface:
     """Value builder and setters for io.github.archer.Control1.Battery."""
 
@@ -18,7 +19,6 @@ class BatteryInterface:
             "Calibration": bool(self.hw.get_battery_calibration()),
             "UsbCharging": usb,
         }
-
 
     def _m_Battery_SetLimiter(self, sender, enabled):
         if not self.hw.set_battery_limiter(bool(enabled)):
@@ -39,4 +39,3 @@ class BatteryInterface:
             raise ControlError("HardwareFailure", "usb_charging write failed")
         self.hw.settings.set("usb_charging", int(level))
         self.store.update(self._iface("Battery"), self._battery_values())
-

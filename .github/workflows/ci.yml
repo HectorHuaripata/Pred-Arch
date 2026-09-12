@@ -76,11 +76,11 @@ jobs:
   dbus-introspect-smoke:
     name: D-Bus Introspect Smoke
     runs-on: ubuntu-latest
+    # No actions/setup-python here on purpose: the smoke tests need
+    # python3-dbus and python3-gi from apt, which only the distro's
+    # /usr/bin/python3 can import.
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
       - name: Install D-Bus runtime
         run: |
           sudo apt-get update
@@ -97,4 +97,4 @@ jobs:
           # Starts gui/archer_daemon.py --session-bus (no root, no Acer
           # hardware needed) and checks subscriber-driven telemetry,
           # PropertiesChanged deltas and typed errors against the XML.
-          dbus-run-session -- python3 tests/dbus_v2_smoke.py
+          dbus-run-session -- /usr/bin/python3 tests/dbus_v2_smoke.py

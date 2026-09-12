@@ -122,11 +122,11 @@ BUTTON_STATIC = 2
 # once this backend takes over, so there is nothing left to read them from.
 # Override per profile with button_colours in settings.json.
 PROFILE_COLOURS = {
-    "low-power":            "00b0ff",   # cyan
-    "quiet":                "00ff40",   # green
-    "balanced":             "0080ff",   # blue, matching Archer's own palette
+    "low-power": "00b0ff",              # cyan
+    "quiet": "00ff40",                  # green
+    "balanced": "0080ff",               # blue, matching Archer's own palette
     "balanced-performance": "8000ff",   # purple, observed on this machine
-    "performance":          "ff0000",   # red
+    "performance": "ff0000",            # red
 }
 
 # Effects offered in the GUI, in list order. Only verified modes are exposed.
@@ -158,8 +158,8 @@ _IOC_WRITE, _IOC_READ = 1, 2
 
 
 def _hidiocsfeature(size):
-    return (((_IOC_WRITE | _IOC_READ) << 30) | (size << 16) |
-            (ord('H') << 8) | 0x06)
+    return (((_IOC_WRITE | _IOC_READ) << 30) | (size << 16)
+            | (ord('H') << 8) | 0x06)
 
 
 IOCTL_TIMEOUT_S = 3.0

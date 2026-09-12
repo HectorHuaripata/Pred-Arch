@@ -7,6 +7,7 @@ import os
 from archer_control.common import ControlError
 from archer_control.constants import NOISE_CONF
 
+
 class AudioInterface:
     """Value builder and SetNoiseSuppression for io.github.archer.Control1.Audio."""
 
@@ -27,4 +28,3 @@ class AudioInterface:
         self.hw.settings.set("audio_enhancement", {"noise_suppression": bool(enabled)})
         # The client that sees this flip restarts pipewire in its own session.
         self.store.update(self._iface("Audio"), {"NoiseSuppression": os.path.exists(NOISE_CONF)})
-

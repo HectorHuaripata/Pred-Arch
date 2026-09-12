@@ -5,6 +5,7 @@ Lighting: keyboard zones and effects, mode-button LED, lid logo, backlight timeo
 from archer_control.common import ControlError, byte_arg, hex_to_rgb, rgb_to_hex
 from archer_control.constants import DIRECTION_TO_WIRE, WIRE_TO_DIRECTION, WMI_EFFECTS
 
+
 class LightingInterface:
     """Value builder and setters for io.github.archer.Control1.Lighting.
 
@@ -62,7 +63,6 @@ class LightingInterface:
             "LogoBrightness": max(0, min(255, int(logo.get("brightness", 100)))),
             "BacklightTimeout": bool(self.hw.get_backlight_timeout()),
         }
-
 
     def _lighting_refresh(self):
         self.store.update(self._iface("Lighting"), self._lighting_values())
@@ -230,4 +230,3 @@ class LightingInterface:
             raise ControlError("HardwareFailure", "backlight_timeout write failed")
         self.hw.settings.set("backlight_timeout", bool(enabled))
         self._lighting_refresh()
-

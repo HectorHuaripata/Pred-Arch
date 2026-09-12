@@ -146,7 +146,7 @@ LAUNCHER_EOF
     run_sudo chmod 755 "$_GUI_LAUNCHER"
 
     # Check for Linuwu-Sense driver
-    if ! dkms status 2>/dev/null | grep -q "linuwu-sense"; then
+    if ! dkms status 2>/dev/null | grep "linuwu-sense" >/dev/null; then
         warn "Linuwu-Sense driver not detected. The daemon will have limited functionality."
         warn "Install the 'driver' module for full hardware control."
     fi

@@ -118,4 +118,3 @@ FEATURE_GATES = {
     "Power.SetBootAnimationSound": ("boot_animation_sound",),
     "Power.SetUsbWake": ("usb_wake_policy",),
 }
-

@@ -9,6 +9,8 @@ import ctypes
 import json
 import logging
 import os
+
+from gi.repository import GLib
 import signal
 import subprocess
 import sys
@@ -1473,7 +1475,6 @@ def main():
     # D-Bus startup failures behind a "deprecated" warning.
     try:
         import dbus.mainloop.glib
-        from gi.repository import GLib
         from archer_dbus import ArcherDBusService
     except ImportError as e:
         logger.error(

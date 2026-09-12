@@ -8,6 +8,7 @@ from gi.repository import GLib
 
 from archer_control.common import ControlError, logger
 
+
 class DisplayInterface:
     """Value builder and SetMode for io.github.archer.Control1.Display."""
 
@@ -22,7 +23,6 @@ class DisplayInterface:
             "HasMux": bool(mux.get("has_mux", False)),
             "ActiveGpu": str(mux.get("active_gpu", "unknown")),
         }
-
 
     def _m_Display_SetMode(self, sender, mode):
         choices = self.store.value(self._iface("Display"), "Choices") or []
@@ -43,4 +43,3 @@ class DisplayInterface:
                     self._iface("Display"), self._display_values()), False)[1])
 
         threading.Thread(target=worker, name="display-mode", daemon=True).start()
-

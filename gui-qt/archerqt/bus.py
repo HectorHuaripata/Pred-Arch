@@ -29,6 +29,7 @@ OBJECT_PATH = "/io/github/archer/Control1"
 PROPS_IFACE = "org.freedesktop.DBus.Properties"
 ERROR_PREFIX = BUS_NAME + ".Error."
 
+
 def _lower_camel(name):
     return name[0].lower() + name[1:]
 

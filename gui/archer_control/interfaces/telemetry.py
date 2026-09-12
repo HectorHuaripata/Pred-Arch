@@ -3,7 +3,6 @@ Telemetry: subscription methods (sampling lives in telemetry.py).
 """
 
 
-
 class TelemetryInterface:
     """Subscribe / Unsubscribe for io.github.archer.Control1.Telemetry."""
 
@@ -12,4 +11,3 @@ class TelemetryInterface:
 
     def _m_Telemetry_Unsubscribe(self, sender):
         self.telemetry.unsubscribe(sender)
-

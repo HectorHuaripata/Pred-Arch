@@ -238,4 +238,3 @@ class ArcherControl(SystemInterface, TelemetryInterface, ThermalInterface, Batte
         except Exception as e:
             logger.warning(f"slow-state watch failed: {e}")
         return True
-

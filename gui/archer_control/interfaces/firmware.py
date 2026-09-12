@@ -12,6 +12,7 @@ from gi.repository import GLib
 from archer_control.common import ControlError, logger
 from archer_control.constants import DEFAULT_PATH, DMI_BIOS_VERSION
 
+
 class FirmwareInterface:
     """Value builder and Refresh for io.github.archer.Control1.Firmware."""
 
@@ -33,7 +34,6 @@ class FirmwareInterface:
         }
 
     @staticmethod
-
     def _m_Firmware_Refresh(self, sender):
         if not self.store.value(self._iface("Firmware"), "FwupdAvailable"):
             raise ControlError("Unsupported", "fwupdmgr is not installed")
@@ -58,4 +58,3 @@ class FirmwareInterface:
                     "Updates": updates, "LastRefresh": int(time.time())}), False)[1])
 
         threading.Thread(target=worker, name="fwupd-refresh", daemon=True).start()
-
