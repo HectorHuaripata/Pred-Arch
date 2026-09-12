@@ -1,8 +1,9 @@
 import QtQuick
+import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 
-// A titled surface. Content goes in `contentItem`'s column.
+// A titled surface; children go into a vertical column.
 Kirigami.AbstractCard {
     id: root
     property string title: ""
@@ -14,7 +15,7 @@ Kirigami.AbstractCard {
         RowLayout {
             visible: root.title !== ""
             Kirigami.Heading { level: 3; text: root.title; Layout.fillWidth: true }
-            Text { text: root.subtitle; visible: text !== ""; color: Kirigami.Theme.textColor; opacity: 0.6; font: Kirigami.Theme.smallFont }
+            QQC2.Label { text: root.subtitle; visible: text !== ""; opacity: 0.6; font: Kirigami.Theme.smallFont }
         }
         ColumnLayout { id: column; spacing: Kirigami.Units.largeSpacing; Layout.fillWidth: true }
     }

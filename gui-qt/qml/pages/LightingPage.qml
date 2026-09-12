@@ -6,48 +6,47 @@ import org.kde.kirigami as Kirigami
 import "../components"
 import "../Utils.js" as U
 
+// Keyboard zones and effects, mode-button LED, lid logo, backlight timeout.
+// Every control applies as it moves; the daemon coalesces bursts.
 Kirigami.ScrollablePage {
     id: page
-    title: "Lighting"
+    title: qsTr("Lighting")
     padding: Kirigami.Units.largeSpacing * 2
 
-    readonly property var zones: Lighting.zones || [[255,255,255],[255,255,255],[255,255,255],[255,255,255]]
-    readonly property bool ene: Lighting.backend === "ene"
-    readonly property bool isEffect: Lighting.effect !== "static" && Lighting.effect !== "off"
-    property int selectedZone: -1
+    readonly property var zones: Lighting.zones || [[255, 255, 255], [255, 255, 255], [255, 255, 255], [255, 255, 255]]
+    readonly property bool eneBackend: Lighting.backend === "ene"
+    readonly property bool effectActive: Lighting.effect !== "static" && Lighting.effect !== "off"
+    readonly property string preferredEffect: "Wave"
+    property int selectedZone: -1                 // -1 = all zones
 
     function setZone(index, color) {
         var rgb = U.colorToRgb(color)
         if (index < 0) Bus.call("Lighting", "SetZones", [[rgb, rgb, rgb, rgb], Lighting.brightness])
         else Bus.call("Lighting", "SetZoneMask", [1 << index, rgb])
     }
+    function applyEffect(name, rgb, speed, direction) {
+        Bus.call("Lighting", "SetEffect", [name, Lighting.brightness, rgb || Lighting.effectColor,
+                                           speed !== undefined ? speed : Lighting.effectSpeed,
+                                           direction || Lighting.effectDirection || "right"])
+    }
+    function startEffect() {
+        var choices = Lighting.effectChoices || []
+        applyEffect(choices.indexOf(preferredEffect) >= 0 ? preferredEffect : (choices[1] || choices[0] || preferredEffect))
+    }
 
     ColorDialog {
         id: zoneDialog
-        title: page.selectedZone < 0 ? "Colour for all zones" : "Colour for zone " + (page.selectedZone + 1)
+        title: page.selectedZone < 0 ? qsTr("Colour for all zones") : qsTr("Colour for zone %1").arg(page.selectedZone + 1)
         onSelectedColorChanged: if (visible) page.setZone(page.selectedZone, selectedColor)   // live while picking
         onAccepted: page.setZone(page.selectedZone, selectedColor)
     }
-    ColorDialog {
-        id: effectDialog
-        title: "Effect colour"
-        onAccepted: page.applyEffect(Lighting.effect, U.colorToRgb(selectedColor))
-    }
-    ColorDialog {
-        id: logoDialog
-        title: "Lid logo colour"
-        onAccepted: Bus.call("Lighting", "SetLogo", [U.colorToRgb(selectedColor), Lighting.logoBrightness])
-    }
+    ColorDialog { id: effectDialog; title: qsTr("Effect colour"); onAccepted: page.applyEffect(Lighting.effect, U.colorToRgb(selectedColor)) }
+    ColorDialog { id: logoDialog; title: qsTr("Lid logo colour"); onAccepted: Bus.call("Lighting", "SetLogo", [U.colorToRgb(selectedColor), Lighting.logoBrightness]) }
     ColorDialog {
         id: buttonDialog
         property string profile: ""
-        title: "Button colour for " + U.profileLabel(profile)
+        title: qsTr("Button colour for %1").arg(Catalog.profileLabel(profile))
         onAccepted: Bus.call("Lighting", "SetButtonColor", [profile, U.colorToRgb(selectedColor)])
-    }
-
-    function applyEffect(name, rgb) {
-        Bus.call("Lighting", "SetEffect", [name, Lighting.brightness, rgb || Lighting.effectColor,
-                                           Lighting.effectSpeed, Lighting.effectDirection || "right"])
     }
 
     ColumnLayout {
@@ -57,12 +56,12 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             visible: Lighting.backend === "wmi"
             type: Kirigami.MessageType.Warning
-            text: "Driving the keyboard through ACPI‑WMI. On some Predator models this path reports success but changes nothing; the ENE backend is needed there."
+            text: qsTr("Driving the keyboard through ACPI-WMI. On some Predator models this path reports success but changes nothing; the ENE backend is needed there.")
         }
 
         Card {
-            title: "Keyboard"
-            subtitle: Lighting.backend === "ene" ? "ENE K5130 · " + (Lighting.effect === "off" ? "off" : Lighting.effect) : Lighting.backend
+            title: qsTr("Keyboard")
+            subtitle: page.eneBackend ? qsTr("ENE K5130 · %1").arg(Lighting.effect === "off" ? qsTr("off") : Lighting.effect) : (Lighting.backend || "")
             KeyboardPreview {
                 Layout.fillWidth: true
                 selected: page.selectedZone
@@ -70,80 +69,66 @@ Kirigami.ScrollablePage {
             }
             RowLayout {
                 spacing: Kirigami.Units.largeSpacing
-                ChoiceButton { text: "Static colour"; icon.name: "color-picker"; current: Lighting.effect === "static"
+                ChoiceButton { text: qsTr("Static colour"); icon.name: "color-picker"; current: Lighting.effect === "static"
                     onClicked: Bus.call("Lighting", "SetZones", [page.zones, Lighting.brightness]) }
-                ChoiceButton { text: "Effect"; icon.name: "view-refresh"; current: page.isEffect
-                    onClicked: { var c = Lighting.effectChoices || []; page.applyEffect(c.indexOf("Wave") >= 0 ? "Wave" : (c[1] || c[0] || "Wave")) } }
-                ChoiceButton { text: "Off"; icon.name: "system-shutdown"; current: Lighting.effect === "off"
-                    onClicked: Bus.call("Lighting", "SetOff") }
+                ChoiceButton { text: qsTr("Effect"); icon.name: "view-refresh"; current: page.effectActive; onClicked: page.startEffect() }
+                ChoiceButton { text: qsTr("Off"); icon.name: "system-shutdown"; current: Lighting.effect === "off"; onClicked: Bus.call("Lighting", "SetOff") }
                 Item { Layout.fillWidth: true }
-                Text { text: "Brightness"; color: Kirigami.Theme.textColor }
+                QQC2.Label { text: qsTr("Brightness") }
                 BoundSlider { Layout.preferredWidth: Kirigami.Units.gridUnit * 10; from: 0; to: 100; bound: Lighting.brightness || 0
                     apply: v => Bus.call("Lighting", "SetBrightness", [v]) }
             }
         }
 
         Card {
-            title: page.selectedZone < 0 ? "Colour · all zones" : "Colour · zone " + (page.selectedZone + 1)
-            subtitle: "click a zone in the preview to colour it alone"
-            visible: !page.isEffect
+            title: page.selectedZone < 0 ? qsTr("Colour · all zones") : qsTr("Colour · zone %1").arg(page.selectedZone + 1)
+            subtitle: qsTr("click a zone in the preview to colour it alone")
+            visible: !page.effectActive
             Flow {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing
                 Repeater {
-                    model: ["#ffffff", "#ff3b30", "#ff9500", "#ffd60a", "#34c759", "#00c7be", "#0a84ff", "#5e5ce6", "#bf5af2", "#ff2d55"]
-                    delegate: Rectangle {
-                        required property string modelData
-                        width: 34; height: 34; radius: 17; color: modelData
-                        border.width: 2; border.color: Qt.rgba(0, 0, 0, 0.25)
-                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: page.setZone(page.selectedZone, parent.color) }
-                    }
+                    model: Catalog.swatches
+                    delegate: Swatch { required property string modelData; round: true; color: modelData; onClicked: page.setZone(page.selectedZone, color) }
                 }
-                QQC2.Button { text: "Custom…"; icon.name: "color-management"
+                QQC2.Button { text: qsTr("Custom…"); icon.name: "color-management"
                     onClicked: { zoneDialog.selectedColor = U.rgbToColor(page.zones[Math.max(0, page.selectedZone)]); zoneDialog.open() } }
             }
         }
 
         Card {
-            title: "Effect"
-            visible: page.isEffect || Lighting.effect === "static"
+            title: qsTr("Effect")
+            visible: page.effectActive || Lighting.effect === "static"
             Flow {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing
                 Repeater {
                     model: (Lighting.effectChoices || []).filter(n => n !== "Static")
-                    delegate: ChoiceButton {
-                        required property string modelData
-                        text: modelData; current: Lighting.effect === modelData
-                        onClicked: page.applyEffect(modelData)
-                    }
+                    delegate: ChoiceButton { required property string modelData; text: modelData; current: Lighting.effect === modelData; onClicked: page.applyEffect(modelData) }
                 }
             }
             GridLayout {
                 columns: 4
-                visible: page.isEffect
-                Text { text: "Colour"; color: Kirigami.Theme.textColor }
-                Rectangle { width: 34; height: 24; radius: 4; color: U.rgbToColor(Lighting.effectColor); border.color: Qt.rgba(0,0,0,0.3)
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { effectDialog.selectedColor = parent.color; effectDialog.open() } } }
-                Text { text: "Direction"; color: Kirigami.Theme.textColor }
+                visible: page.effectActive
+                QQC2.Label { text: qsTr("Colour") }
+                Swatch { color: U.rgbToColor(Lighting.effectColor); onClicked: { effectDialog.selectedColor = color; effectDialog.open() } }
+                QQC2.Label { text: qsTr("Direction") }
                 RowLayout {
-                    ChoiceButton { icon.name: "go-previous"; current: Lighting.effectDirection === "left"
-                        onClicked: Bus.call("Lighting", "SetEffect", [Lighting.effect, Lighting.brightness, Lighting.effectColor, Lighting.effectSpeed, "left"]) }
-                    ChoiceButton { icon.name: "go-next"; current: Lighting.effectDirection === "right"
-                        onClicked: Bus.call("Lighting", "SetEffect", [Lighting.effect, Lighting.brightness, Lighting.effectColor, Lighting.effectSpeed, "right"]) }
+                    ChoiceButton { icon.name: "go-previous"; current: Lighting.effectDirection === "left"; onClicked: page.applyEffect(Lighting.effect, undefined, undefined, "left") }
+                    ChoiceButton { icon.name: "go-next"; current: Lighting.effectDirection === "right"; onClicked: page.applyEffect(Lighting.effect, undefined, undefined, "right") }
                 }
-                Text { text: "Speed"; color: Kirigami.Theme.textColor }
+                QQC2.Label { text: qsTr("Speed") }
                 BoundSlider { Layout.columnSpan: 3; Layout.fillWidth: true; from: 0; to: 9; stepSize: 1; snapMode: QQC2.Slider.SnapAlways; bound: Lighting.effectSpeed || 0
-                    apply: v => Bus.call("Lighting", "SetEffect", [Lighting.effect, Lighting.brightness, Lighting.effectColor, v, Lighting.effectDirection || "right"]) }
+                    apply: v => page.applyEffect(Lighting.effect, undefined, v) }
             }
-            Text { visible: page.ene; text: "Speed and direction bytes are not decoded on the ENE K5130 yet; they are sent but may be ignored."; color: Kirigami.Theme.textColor; opacity: 0.6; font: Kirigami.Theme.smallFont; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+            Hint { visible: page.eneBackend; text: qsTr("Speed and direction bytes are not decoded on the ENE K5130 yet; they are sent but may be ignored.") }
         }
 
         Card {
-            title: "Mode button LED"
-            visible: page.ene
-            subtitle: "coloured by the active profile, whoever changed it"
-            BoundSwitch { text: "Follow the performance profile"; bound: Lighting.buttonFollowsProfile === true; apply: v => Bus.call("Lighting", "SetButtonFollowsProfile", [v]) }
+            title: qsTr("Mode button LED")
+            visible: page.eneBackend
+            subtitle: qsTr("coloured by the active profile, whoever changed it")
+            BoundSwitch { text: qsTr("Follow the performance profile"); bound: Lighting.buttonFollowsProfile === true; apply: v => Bus.call("Lighting", "SetButtonFollowsProfile", [v]) }
             Flow {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.largeSpacing
@@ -151,9 +136,9 @@ Kirigami.ScrollablePage {
                     model: Thermal.profileChoices || []
                     delegate: RowLayout {
                         required property string modelData
-                        Rectangle { width: 22; height: 22; radius: 11; color: U.rgbToColor((Lighting.buttonColors || {})[modelData] || [128,128,128]); border.color: Qt.rgba(0,0,0,0.3)
-                            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { buttonDialog.profile = modelData; buttonDialog.selectedColor = parent.color; buttonDialog.open() } } }
-                        Text { text: U.profileLabel(modelData); color: Kirigami.Theme.textColor }
+                        Swatch { round: true; width: Kirigami.Units.gridUnit * 1.3; color: U.rgbToColor((Lighting.buttonColors || ({}))[modelData] || [128, 128, 128])
+                            onClicked: { buttonDialog.profile = modelData; buttonDialog.selectedColor = color; buttonDialog.open() } }
+                        QQC2.Label { text: Catalog.profileLabel(modelData) }
                     }
                 }
             }
@@ -163,20 +148,19 @@ Kirigami.ScrollablePage {
             Layout.fillWidth: true
             spacing: Kirigami.Units.largeSpacing * 2
             Card {
-                title: "Lid logo"
-                visible: page.ene
+                title: qsTr("Lid logo")
+                visible: page.eneBackend
                 RowLayout {
-                    Rectangle { width: 34; height: 24; radius: 4; color: U.rgbToColor(Lighting.logoColor); border.color: Qt.rgba(0,0,0,0.3)
-                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { logoDialog.selectedColor = parent.color; logoDialog.open() } } }
-                    Text { text: "Brightness"; color: Kirigami.Theme.textColor }
+                    Swatch { color: U.rgbToColor(Lighting.logoColor); onClicked: { logoDialog.selectedColor = color; logoDialog.open() } }
+                    QQC2.Label { text: qsTr("Brightness") }
                     BoundSlider { Layout.fillWidth: true; from: 0; to: 100; bound: Lighting.logoBrightness || 0
                         apply: v => Bus.call("Lighting", "SetLogo", [Lighting.logoColor, v]) }
                 }
             }
             Card {
-                title: "Backlight timeout"
+                title: qsTr("Backlight timeout")
                 visible: (System.features || []).indexOf("backlight_timeout") >= 0
-                BoundSwitch { text: "Turn the keyboard off after 30 s idle"; bound: Lighting.backlightTimeout === true; apply: v => Bus.call("Lighting", "SetBacklightTimeout", [v]) }
+                BoundSwitch { text: qsTr("Turn the keyboard off after 30 s idle"); bound: Lighting.backlightTimeout === true; apply: v => Bus.call("Lighting", "SetBacklightTimeout", [v]) }
             }
         }
     }

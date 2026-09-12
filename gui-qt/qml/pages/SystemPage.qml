@@ -3,11 +3,14 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import "../components"
+import "../Utils.js" as U
 
+// Machine facts, detected capabilities, firmware, driver and maintenance.
 Kirigami.ScrollablePage {
     id: page
-    title: "System"
+    title: qsTr("System")
     padding: Kirigami.Units.largeSpacing * 2
+
     property bool refreshing: false
     Connections {
         target: Firmware
@@ -18,47 +21,41 @@ Kirigami.ScrollablePage {
         spacing: Kirigami.Units.largeSpacing * 2
 
         Card {
-            title: "This machine"
+            title: qsTr("This machine")
             Kirigami.FormLayout {
                 Layout.fillWidth: true
-                Text { Kirigami.FormData.label: "Model:"; text: (System.vendor || "") + " " + (System.productName || ""); color: Kirigami.Theme.textColor }
-                Text { Kirigami.FormData.label: "Family:"; text: System.laptopType || ""; color: Kirigami.Theme.textColor }
-                Text { Kirigami.FormData.label: "CPU:"; text: System.cpuModel || ""; color: Kirigami.Theme.textColor }
-                Text { Kirigami.FormData.label: "GPU:"; text: System.gpuModel || ""; color: Kirigami.Theme.textColor }
-                Text { Kirigami.FormData.label: "Kernel:"; text: System.kernel || ""; color: Kirigami.Theme.textColor }
-                Text { Kirigami.FormData.label: "BIOS:"; text: Firmware.biosVersion || ""; color: Kirigami.Theme.textColor }
-                Text { Kirigami.FormData.label: "Driver:"; text: (System.driver || "") + (System.driverVersion && System.driverVersion !== "N/A" ? " " + System.driverVersion : ""); color: Kirigami.Theme.textColor }
-                Text { Kirigami.FormData.label: "Keyboard LED backend:"; text: System.eneReady ? "ENE K5130 (direct)" : (Lighting.backend || ""); color: Kirigami.Theme.textColor }
-                Text { Kirigami.FormData.label: "Daemon:"; text: "v" + (System.version || "?") + (Bus.connected ? " · connected" : " · offline"); color: Bus.connected ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor }
+                QQC2.Label { Kirigami.FormData.label: qsTr("Model:"); text: [System.vendor, System.productName].filter(s => s).join(" ") }
+                QQC2.Label { Kirigami.FormData.label: qsTr("Family:"); text: U.capitalize(System.laptopType || "") }
+                QQC2.Label { Kirigami.FormData.label: qsTr("CPU:"); text: System.cpuModel || "" }
+                QQC2.Label { Kirigami.FormData.label: qsTr("GPU:"); text: System.gpuModel || "" }
+                QQC2.Label { Kirigami.FormData.label: qsTr("Kernel:"); text: System.kernel || "" }
+                QQC2.Label { Kirigami.FormData.label: qsTr("BIOS:"); text: Firmware.biosVersion || "" }
+                QQC2.Label { Kirigami.FormData.label: qsTr("Driver:")
+                    text: [System.driver, System.driverVersion && System.driverVersion !== "N/A" ? System.driverVersion : ""].filter(s => s).join(" ") }
+                QQC2.Label { Kirigami.FormData.label: qsTr("Keyboard LED backend:"); text: System.eneReady ? qsTr("ENE K5130 (direct)") : (Lighting.backend || "") }
+                QQC2.Label { Kirigami.FormData.label: qsTr("Daemon:")
+                    text: qsTr("v%1 · %2").arg(System.version || "?").arg(Bus.connected ? qsTr("connected") : qsTr("offline"))
+                    color: Bus.connected ? Kirigami.Theme.positiveTextColor : Kirigami.Theme.negativeTextColor }
             }
             // What the daemon found on this hardware. Informational: these
             // decide which pages and controls are shown, nothing to click.
-            Text { text: "Detected capabilities"; color: Kirigami.Theme.textColor; opacity: 0.7; font.pointSize: Kirigami.Theme.smallFont.pointSize; font.capitalization: Font.AllUppercase; font.letterSpacing: 1 }
+            Eyebrow { label: qsTr("Detected capabilities") }
             Flow {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.smallSpacing
-                readonly property var names: ({
-                    "thermal_profiles": "Performance profiles", "fan_control": "Fan control", "fan_speed": "Fan control",
-                    "keyboard_per_zone": "Per-zone keyboard colour", "keyboard_effects": "Keyboard effects",
-                    "battery_limiter": "Charge limit", "battery_calibration": "Battery calibration", "battery_info": "Battery readings",
-                    "usb_charging": "USB charging while asleep", "lcd_override": "LCD override", "boot_animation_sound": "Boot animation & sound",
-                    "backlight_timeout": "Keyboard backlight timeout", "display_mode": "GPU mode switching", "game_mode": "Game mode",
-                    "usb_wake_policy": "Wake sources", "firmware_info": "Firmware info"
-                })
                 Repeater {
                     model: System.features || []
                     delegate: Rectangle {
                         required property string modelData
-                        readonly property string label: parent.names[modelData] || modelData
-                        width: tagText.implicitWidth + Kirigami.Units.largeSpacing * 2
-                        height: tagText.implicitHeight + Kirigami.Units.smallSpacing * 2
+                        width: tag.implicitWidth + Kirigami.Units.largeSpacing * 2
+                        height: tag.implicitHeight + Kirigami.Units.smallSpacing * 2
                         radius: height / 2
                         color: Qt.rgba(Kirigami.Theme.positiveTextColor.r, Kirigami.Theme.positiveTextColor.g, Kirigami.Theme.positiveTextColor.b, 0.14)
                         Row {
                             anchors.centerIn: parent
                             spacing: Kirigami.Units.smallSpacing
-                            Rectangle { width: 7; height: 7; radius: 3.5; color: Kirigami.Theme.positiveTextColor; anchors.verticalCenter: parent.verticalCenter }
-                            Text { id: tagText; text: label; color: Kirigami.Theme.textColor; font.pointSize: Kirigami.Theme.smallFont.pointSize }
+                            Rectangle { width: Kirigami.Units.smallSpacing * 1.75; height: width; radius: width / 2; color: Kirigami.Theme.positiveTextColor; anchors.verticalCenter: parent.verticalCenter }
+                            QQC2.Label { id: tag; text: Catalog.capabilityLabel(modelData); font: Kirigami.Theme.smallFont }
                         }
                     }
                 }
@@ -66,36 +63,39 @@ Kirigami.ScrollablePage {
         }
 
         Card {
-            title: "Firmware updates"
-            subtitle: Firmware.fwupdAvailable ? (Firmware.lastRefresh > 0 ? "checked " + new Date(Firmware.lastRefresh * 1000).toLocaleTimeString() : "not checked yet") : "fwupd is not installed"
+            title: qsTr("Firmware updates")
+            subtitle: Firmware.fwupdAvailable
+                      ? (Firmware.lastRefresh > 0 ? qsTr("checked %1").arg(new Date(Firmware.lastRefresh * 1000).toLocaleTimeString()) : qsTr("not checked yet"))
+                      : qsTr("fwupd is not installed")
             RowLayout {
-                QQC2.Button { text: "Check for updates"; icon.name: "view-refresh"; enabled: Firmware.fwupdAvailable === true && !page.refreshing
+                QQC2.Button { text: qsTr("Check for updates"); icon.name: "view-refresh"; enabled: Firmware.fwupdAvailable === true && !page.refreshing
                     onClicked: { page.refreshing = true; Bus.call("Firmware", "Refresh") } }
                 QQC2.BusyIndicator { running: page.refreshing; visible: running }
-                Text { visible: Firmware.lastRefresh > 0 && (Firmware.updates || []).length === 0; text: "Everything is up to date."; color: Kirigami.Theme.positiveTextColor }
+                QQC2.Label { visible: Firmware.lastRefresh > 0 && (Firmware.updates || []).length === 0; text: qsTr("Everything is up to date."); color: Kirigami.Theme.positiveTextColor }
             }
             Repeater {
-                model: Firmware.updates || []
-                delegate: Text { required property var modelData; text: modelData[0] + ": " + modelData[1] + " → " + modelData[2]; color: Kirigami.Theme.textColor }
+                model: Firmware.updates || []               // [[device, current, available], …]
+                delegate: QQC2.Label { required property var modelData; text: qsTr("%1: %2 → %3").arg(modelData[0]).arg(modelData[1]).arg(modelData[2]) }
             }
         }
 
         Card {
-            title: "Driver"
-            subtitle: "linuwu_sense module parameter"
+            title: qsTr("Driver")
+            subtitle: qsTr("linuwu_sense module parameter")
             RowLayout {
                 Repeater {
-                    model: [["", "Auto‑detect"], ["nitro_v4", "nitro_v4"], ["predator_v4", "predator_v4"], ["enable_all", "enable_all"]]
+                    model: Catalog.modprobeParameters       // [[value, label], …]; "" = auto-detect
                     delegate: ChoiceButton {
                         required property var modelData
                         text: modelData[1]; current: (Maintenance.modprobeParameter || "") === modelData[0]
-                        onClicked: modelData[0] === "" ? Bus.call("Maintenance", "ClearModprobeParameter") : Bus.call("Maintenance", "SetModprobeParameter", [modelData[0]])
+                        onClicked: modelData[0] === "" ? Bus.call("Maintenance", "ClearModprobeParameter")
+                                                       : Bus.call("Maintenance", "SetModprobeParameter", [modelData[0]])
                     }
                 }
             }
             RowLayout {
-                QQC2.Button { text: "Restart daemon"; icon.name: "system-reboot"; onClicked: Bus.call("Maintenance", "RestartDaemon") }
-                QQC2.Button { text: "Reload driver and daemon"; icon.name: "system-reboot"; onClicked: Bus.call("Maintenance", "RestartDriversAndDaemon") }
+                QQC2.Button { text: qsTr("Restart daemon"); icon.name: "system-reboot"; onClicked: Bus.call("Maintenance", "RestartDaemon") }
+                QQC2.Button { text: qsTr("Reload driver and daemon"); icon.name: "system-reboot"; onClicked: Bus.call("Maintenance", "RestartDriversAndDaemon") }
             }
         }
     }

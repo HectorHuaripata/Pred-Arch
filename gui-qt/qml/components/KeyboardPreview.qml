@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import "../Utils.js" as U
@@ -54,10 +55,11 @@ Item {
                             }
                         }
                     }
-                    Text {
-                        anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 4
-                        text: "Zone " + (zone.index + 1)
-                        color: "white"; opacity: 0.75; font: Kirigami.Theme.smallFont
+                    QQC2.Label {
+                        anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: Kirigami.Units.smallSpacing
+                        text: qsTr("Zone %1").arg(zone.index + 1)
+                        color: "white"; opacity: 0.75      // always on a dark key bed
+                        font: Kirigami.Theme.smallFont
                     }
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.zoneClicked(zone.index) }
                 }

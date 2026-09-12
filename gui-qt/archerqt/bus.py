@@ -16,10 +16,11 @@ without any bridging.
 import logging
 import os
 import re
-from pathlib import Path
 
 from gi.repository import Gio, GLib
 from PySide6.QtCore import Property, QObject, Signal, Slot
+
+from archerqt import paths
 
 logger = logging.getLogger("archer-qt")
 
@@ -27,14 +28,6 @@ BUS_NAME = "io.github.archer.Control1"
 OBJECT_PATH = "/io/github/archer/Control1"
 PROPS_IFACE = "org.freedesktop.DBus.Properties"
 ERROR_PREFIX = BUS_NAME + ".Error."
-
-XML_NAME = "io.github.archer.Control1.xml"
-XML_CANDIDATES = (
-    Path(__file__).resolve().parent.parent / XML_NAME,
-    Path(__file__).resolve().parent.parent.parent / "dbus" / XML_NAME,
-    Path("/opt/archer") / XML_NAME,
-)
-
 
 def _lower_camel(name):
     return name[0].lower() + name[1:]
@@ -104,10 +97,7 @@ def _coerce(value, sig):
 
 
 def _load_node_info():
-    for path in XML_CANDIDATES:
-        if path.is_file():
-            return Gio.DBusNodeInfo.new_for_xml(path.read_text())
-    raise FileNotFoundError(f"{XML_NAME} not found in {[str(p) for p in XML_CANDIDATES]}")
+    return Gio.DBusNodeInfo.new_for_xml(paths.contract_xml().read_text())
 
 
 def _make_interface_class(iface_info):

@@ -49,7 +49,8 @@ Qt 6 / QML with PySide6, Kirigami + qqc2-desktop-style (Breeze under Plasma).
 - [x] Lighting: four-zone preview, click a zone to colour it alone, swatches + colour dialog applied live, effect gallery, speed/direction, button LED per profile, lid logo, backlight timeout. No "Apply" anywhere.
 - [x] Controls revert when the daemon refuses (typed errors → passive notification; `NotAuthorized` silent).
 - [x] Tray: `QSystemTrayIcon` with quick profile switch and temperatures in the tooltip while visible.
-- [ ] Theme follows the system already (Kirigami); Spanish translation not started.
+- [x] Restructured for contribution: `paths` / `settings` / `catalog` / `tray` / `controller` modules, every string through `qsTr()` / `translate()`, no literal paths, thresholds or cadences in QML.
+- [ ] Spanish translation (`gui-qt/translations/`, infrastructure in place).
 - [ ] Fan-curve editor is a plain point list; a drag-able chart is a later polish.
 - Exit criterion met: every control reflects external changes within one sampling interval; only `Display.SetMode` needs a confirmation step (logout).
 

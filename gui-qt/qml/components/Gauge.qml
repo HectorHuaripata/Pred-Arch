@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import QtQuick.Shapes
 import org.kde.kirigami as Kirigami
@@ -69,29 +70,26 @@ Item {
             text: root.value.toFixed(root.decimals)
             font.weight: Font.DemiBold
         }
-        Text {
+        QQC2.Label {
             Layout.alignment: Qt.AlignHCenter
             text: root.unit
-            color: Kirigami.Theme.textColor
             opacity: 0.7
         }
     }
-    Text {
+    QQC2.Label {
         id: caption
         anchors.top: shape.bottom
         anchors.topMargin: Kirigami.Units.smallSpacing
         anchors.horizontalCenter: parent.horizontalCenter
         text: root.label
-        color: Kirigami.Theme.textColor
         opacity: 0.8
     }
-    Text {
+    QQC2.Label {
         id: noteText
         anchors.top: caption.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         text: root.note !== "" ? root.note : " "
-        color: Kirigami.Theme.textColor
         opacity: 0.55
-        font.pointSize: Kirigami.Theme.smallFont.pointSize
+        font: Kirigami.Theme.smallFont
     }
 }
