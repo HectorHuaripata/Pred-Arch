@@ -16,7 +16,9 @@ Item {
     property int decimals: 0
 
     implicitWidth: Kirigami.Units.gridUnit * 8
-    implicitHeight: implicitWidth + caption.implicitHeight + (note !== "" ? noteText.implicitHeight : 0) + Kirigami.Units.smallSpacing
+    // The note line is always reserved so gauges with and without one
+    // share the same height and their arcs line up in a row.
+    implicitHeight: implicitWidth + caption.implicitHeight + noteText.implicitHeight + Kirigami.Units.smallSpacing
 
     readonly property real _target: Math.max(0, Math.min(maxValue, value))
     property real _shown: 0
@@ -87,8 +89,7 @@ Item {
         id: noteText
         anchors.top: caption.bottom
         anchors.horizontalCenter: parent.horizontalCenter
-        visible: root.note !== ""
-        text: root.note
+        text: root.note !== "" ? root.note : " "
         color: Kirigami.Theme.textColor
         opacity: 0.55
         font.pointSize: Kirigami.Theme.smallFont.pointSize
