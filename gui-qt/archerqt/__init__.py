@@ -22,4 +22,4 @@ slots, signals — is camelCase, because that is the Qt/QML convention and
 QML property names must start with a lowercase letter.
 """
 
-__version__ = "2.1.0"
+__version__ = "2.1.1"

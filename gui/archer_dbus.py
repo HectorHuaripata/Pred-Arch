@@ -126,7 +126,7 @@ class ArcherDBusService(dbus.service.Object):
                          sender_keyword="sender")
     def Ping(self, sender=None):
         self._note_client(sender)
-        return self._json_response({"success": True, "data": {"version": self.hw.settings.get("daemon_version", "2.1.0")}})
+        return self._json_response({"success": True, "data": {"version": self.hw.settings.get("daemon_version", "2.1.1")}})
 
     @dbus.service.method(DBUS_IFACE, in_signature="", out_signature="s",
                          sender_keyword="sender")

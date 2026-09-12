@@ -5,6 +5,27 @@ All notable changes to Archer Compatibility Suite are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] — 2026-09-12
+
+### Fixed
+
+- **Linuwu-Sense builds on kernel 7.2**: the installer patches the three
+  `strncpy` calls (no longer implicitly declared) to `memcpy` after cloning
+  the driver; all three copy `min(count, sizeof - 1)` bytes and terminate
+  by hand. Without it the module is missing after a kernel upgrade and the
+  panel shows the profile as "unknown".
+- **Installer aborts on a failed system upgrade** instead of installing
+  modules on freshly synced databases (a partial upgrade broke every Qt
+  application on the reference machine).
+- Installer no longer reports "Linuwu-Sense driver not detected" when it
+  is loaded (`grep -q` under `pipefail` killed `dkms status` with SIGPIPE).
+- Daemon: `GLib` imported at module level; `schedule_ene_retry()` raised
+  `NameError` when the ENE controller was slow to appear.
+- CI: the v1 D-Bus smoke ran service and client in one process and
+  deadlocked; it now spawns the service. The smoke job uses the distro
+  Python that can import `python3-dbus`; actions bumped to Node 24
+  versions; flake8 covers `gui-qt/`.
+
 ## [2.1.0] — 2026-09-11
 
 First Pred-Arch release: a fork of Archer Compatibility Suite 2.0.1 for the
