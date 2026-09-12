@@ -1083,10 +1083,14 @@ class HardwareManager:
                         break
         except OSError:
             pass
+        # Prefer the discrete GPU (NVIDIA/AMD, usually a "3D controller" or
+        # the second VGA device) over the CPU's integrated graphics, which
+        # lspci lists first.
         gpu_model = _PROBE_CACHE.get_or_compute(
             "lspci-gpu",
             lambda: run_cmd(
-                "lspci 2>/dev/null | grep -iE 'vga|3d' | head -1 | sed 's/.*: //'",
+                "lspci 2>/dev/null | grep -iE 'vga|3d' | sed 's/.*: //' "
+                "| { grep -iE 'nvidia|advanced micro|radeon|\\[amd' || cat; } | head -1",
                 shell_meta_ok=True,
             ),
         )

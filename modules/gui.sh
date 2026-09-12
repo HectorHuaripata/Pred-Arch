@@ -51,7 +51,8 @@ module_install() {
 
     # Install dependencies
     log "Installing GUI dependencies..."
-    run_sudo pacman -S --needed --noconfirm python-gobject gtk4 libadwaita python python-pillow python-dbus
+    run_sudo pacman -S --needed --noconfirm python-gobject gtk4 libadwaita python python-pillow python-dbus \
+        pyside6 qt6-declarative kirigami qqc2-desktop-style
 
     # Create directories
     run_sudo mkdir -p "$_GUI_INSTALL_DIR"
@@ -69,6 +70,10 @@ module_install() {
     run_sudo cp "$SCRIPT_DIR/gui/archer_gui.py" "$_GUI_INSTALL_DIR/"
     run_sudo cp -r "$SCRIPT_DIR/gui/archer" "$_GUI_INSTALL_DIR/"
     run_sudo cp -r "$SCRIPT_DIR/gui/assets" "$_GUI_INSTALL_DIR/"
+    # Qt 6 / QML control panel (v3). Speaks only the v2 contract.
+    run_sudo rm -rf "$_GUI_INSTALL_DIR/qt"
+    run_sudo cp -r "$SCRIPT_DIR/gui-qt" "$_GUI_INSTALL_DIR/qt"
+    run_sudo find "$_GUI_INSTALL_DIR/qt" -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
 
     # Install D-Bus service configuration
     log "Installing D-Bus and polkit configuration..."
@@ -131,8 +136,14 @@ module_install() {
     log "Creating launcher script..."
     run_sudo tee "$_GUI_LAUNCHER" > /dev/null <<'LAUNCHER_EOF'
 #!/bin/bash
+# Qt/QML control panel. The previous GTK panel stays as archer-gui-gtk.
+exec python3 /opt/archer/qt/archer_qt.py "$@"
+LAUNCHER_EOF
+    run_sudo tee "${_GUI_LAUNCHER}-gtk" > /dev/null <<'LAUNCHER_EOF'
+#!/bin/bash
 exec python3 /opt/archer/archer_gui.py "$@"
 LAUNCHER_EOF
+    run_sudo chmod 755 "${_GUI_LAUNCHER}-gtk"
     run_sudo chmod 755 "$_GUI_LAUNCHER"
 
     # Check for Linuwu-Sense driver
@@ -146,7 +157,7 @@ LAUNCHER_EOF
     log "Daemon status:  sudo systemctl status archer-daemon"
 
     INSTALLED_FILES+=" $_GUI_INSTALL_DIR $_GUI_SERVICE $_GUI_DESKTOP $_GUI_ICON $_GUI_LAUNCHER $_GUI_SETTINGS_DIR $_GUI_DBUS_POLICY_DIR/io.otectus.Archer1.conf /usr/share/polkit-1/actions/io.otectus.Archer1.policy"
-    INSTALLED_PACKAGES+=" python-gobject gtk4 libadwaita python-pillow python-dbus"
+    INSTALLED_PACKAGES+=" python-gobject gtk4 libadwaita python-pillow python-dbus pyside6 qt6-declarative kirigami qqc2-desktop-style"
 }
 
 module_uninstall() {
@@ -159,7 +170,7 @@ module_uninstall() {
     run_sudo rm -rf "$_GUI_INSTALL_DIR"
     run_sudo rm -f "$_GUI_DESKTOP"
     run_sudo rm -f "$_GUI_ICON"
-    run_sudo rm -f "$_GUI_LAUNCHER"
+    run_sudo rm -f "$_GUI_LAUNCHER" "${_GUI_LAUNCHER}-gtk"
     run_sudo rm -rf "$_GUI_SETTINGS_DIR"
 
     log "Removing D-Bus and polkit configuration..."

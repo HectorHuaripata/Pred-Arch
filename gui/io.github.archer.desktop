@@ -1,11 +1,11 @@
 [Desktop Entry]
 Name=Archer
 Comment=Acer laptop management - fan control, RGB, power profiles
-Exec=python3 /opt/archer/archer_gui.py
+Exec=/usr/local/bin/archer-gui
 Icon=io.github.archer
 Terminal=false
 Type=Application
 Categories=System;Settings;HardwareSettings;
 Keywords=acer;fan;rgb;thermal;battery;
 StartupNotify=true
-StartupWMClass=io.github.archer.gui
+StartupWMClass=archer_qt.py

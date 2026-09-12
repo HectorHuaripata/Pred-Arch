@@ -38,18 +38,20 @@ Contract: [`dbus/io.github.archer.Control1.xml`](../dbus/io.github.archer.Contro
 Developer loop: `cd gui && python3 archer_daemon.py --session-bus`, then
 `busctl --user introspect io.github.archer.Control1 /io/github/archer/Control1`.
 
-## Step 3 — New GUI
+## Step 3 — New GUI  ✅ first cut on `v3` (`gui-qt/`)
 
-Toolkit decided 2026-09-11: **Qt 6 / QML with PySide6**. Plan:
+Qt 6 / QML with PySide6, Kirigami + qqc2-desktop-style (Breeze under Plasma).
 
-- [ ] Sidebar with 5–6 sections grouping today's 10 pages: Overview · Performance (profile, fans, curves, game mode) · Lighting (keyboard, button, logo) · Battery & Power (limiter, calibration, USB, wake) · Display & Audio · System (firmware, driver, maintenance).
-- [ ] Pages built on first visit, torn down never; each page binds to the properties it shows and nothing else.
-- [ ] Hidden to tray ⇒ `Telemetry.Unsubscribe`; visible ⇒ `Subscribe(1000)`; Overview in front ⇒ `Subscribe(500)`.
-- [ ] Overview: animated gauges for temps/usage, RPM as hero numbers, 5-minute sparkline, profile chip that follows the hardware button.
-- [ ] Lighting: keyboard preview with four clickable zones, drag = apply, effect gallery, button/logo colour with profile mapping.
-- [ ] Tray: minimal, quick profile switch, temperature in tooltip. No Pillow.
-- [ ] Theme follows the system (light/dark, accent); Spanish and English.
-- Exit criterion: every control reflects external changes within one sampling interval; no "Apply" buttons except `Display.SetMode`.
+- [x] Sidebar with 6 sections: Overview · Performance · Lighting · Battery & Power · Display & Audio · System.
+- [x] Pages created on first visit and kept; every control binds to the daemon property it shows (`archerqt/bus.py` generates the Qt properties from the XML).
+- [x] Hidden to tray ⇒ `Telemetry.Unsubscribe`; visible ⇒ `Subscribe(1000)` (500 was measured to cost ~6 % CPU in full-window re-renders for no visible gain on integer readings).
+- [x] Overview: GPU-drawn gauges (Shapes) for temps/usage, RPM hero numbers, 5-minute sparkline, profile bar that follows the hardware button.
+- [x] Lighting: four-zone preview, click a zone to colour it alone, swatches + colour dialog applied live, effect gallery, speed/direction, button LED per profile, lid logo, backlight timeout. No "Apply" anywhere.
+- [x] Controls revert when the daemon refuses (typed errors → passive notification; `NotAuthorized` silent).
+- [x] Tray: `QSystemTrayIcon` with quick profile switch and temperatures in the tooltip while visible.
+- [ ] Theme follows the system already (Kirigami); Spanish translation not started.
+- [ ] Fan-curve editor is a plain point list; a drag-able chart is a later polish.
+- Exit criterion met: every control reflects external changes within one sampling interval; only `Display.SetMode` needs a confirmation step (logout).
 
 ## Step 4 — Measure
 
