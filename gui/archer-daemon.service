@@ -1,7 +1,11 @@
 [Unit]
 Description=Archer Compatibility Suite - System Daemon
-After=multi-user.target dbus.service
-Wants=multi-user.target
+# Order the daemon by what it actually needs, not by multi-user.target.
+# With After=multi-user.target it came up ~6 s after its real dependencies
+# were ready and ~5 s after the login screen, so the keyboard lighting
+# visibly changed state in front of the user. basic.target gives us the
+# filesystem and sockets; modules-load gives us linuwu_sense.
+After=basic.target dbus.service systemd-modules-load.service
 Requires=dbus.service
 
 [Service]
