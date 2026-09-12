@@ -1,0 +1,234 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!--
+  Archer daemon, contract v2.
+
+  Bus:    system
+  Name:   io.github.archer.Control1
+  Object: /io/github/archer/Control1
+
+  One object, several interfaces. All state is exposed as read-only D-Bus
+  properties and changes are announced through the standard
+  org.freedesktop.DBus.Properties.PropertiesChanged signal, carrying only the
+  properties whose value actually changed. Mutations are explicit methods so
+  the daemon can run polkit against the caller. Failures are D-Bus errors in
+  the io.github.archer.Control1.Error.* namespace (see docs/DBUS_V2.md).
+
+  This file is the single source of truth for both sides: the daemon
+  registers it with Gio.DBusNodeInfo.new_for_xml(); a Qt client feeds it to
+  qdbusxml2cpp, a GTK client to gdbus-codegen.
+-->
+<node name="/io/github/archer/Control1">
+
+  <!-- Static facts about this machine and this daemon. Never change while
+       the daemon runs, except EneReady, which can flip to true during the
+       first 20 s after boot. -->
+  <interface name="io.github.archer.Control1.System">
+    <property name="Version"       type="s"  access="read"/>
+    <property name="Features"      type="as" access="read"/>
+    <property name="Vendor"        type="s"  access="read"/>
+    <property name="ProductName"   type="s"  access="read"/>
+    <property name="LaptopType"    type="s"  access="read"/>
+    <property name="Driver"        type="s"  access="read"/>
+    <property name="DriverVersion" type="s"  access="read"/>
+    <property name="Kernel"        type="s"  access="read"/>
+    <property name="CpuModel"      type="s"  access="read"/>
+    <property name="GpuModel"      type="s"  access="read"/>
+    <property name="EneReady"      type="b"  access="read"/>
+    <method name="Ping"/>
+  </interface>
+
+  <!-- Live readings. Only sampled while Subscribers > 0; see the cadence
+       rules in docs/DBUS_V2.md. Temperatures in whole °C, usage 0-100,
+       fan speeds in RPM. -->
+  <interface name="io.github.archer.Control1.Telemetry">
+    <property name="CpuTemp"       type="i"  access="read"/>
+    <property name="GpuTemp"       type="i"  access="read"/>
+    <property name="CpuUsage"      type="y"  access="read"/>
+    <property name="GpuUsage"      type="y"  access="read"/>
+    <property name="FanRpm"        type="(uu)" access="read"/>   <!-- cpu, gpu -->
+    <property name="PowerSourceAc" type="b"  access="read"/>
+    <!-- present, percentage, status ("charging"|"discharging"|"full"|"unknown"),
+         seconds to full/empty or -1 -->
+    <property name="Battery"       type="(bdsi)" access="read"/>
+    <!-- Effective sampling interval in ms, 0 when idle. -->
+    <property name="IntervalMs"    type="u"  access="read"/>
+    <property name="Subscribers"   type="u"  access="read"/>
+    <!-- Ask for readings at most every interval_ms (clamped to 250..5000).
+         The daemon samples at the fastest interval any live subscriber
+         asked for and stops when the last one leaves the bus. -->
+    <method name="Subscribe">
+      <arg direction="in" name="interval_ms" type="u"/>
+    </method>
+    <method name="Unsubscribe"/>
+  </interface>
+
+  <!-- Platform profile and fans. Profile reflects platform_profile whoever
+       wrote it (Archer, the hardware button, powerprofilesctl, Plasma). -->
+  <interface name="io.github.archer.Control1.Thermal">
+    <property name="Profile"        type="s"  access="read"/>
+    <property name="ProfileChoices" type="as" access="read"/>
+    <!-- "auto" | "manual" | "curve" -->
+    <property name="FanMode"        type="s"  access="read"/>
+    <!-- Requested duty in percent (cpu, gpu); (0,0) means auto. -->
+    <property name="FanSpeed"       type="(uu)" access="read"/>
+    <!-- target -> (active, [(temp_c, percent), ...]) for "cpu" and "gpu" -->
+    <property name="FanCurves"      type="a{s(ba(uu))}" access="read"/>
+    <method name="SetProfile">
+      <arg direction="in" name="profile" type="s"/>
+    </method>
+    <method name="SetFanSpeed">
+      <arg direction="in" name="cpu_percent" type="u"/>
+      <arg direction="in" name="gpu_percent" type="u"/>
+    </method>
+    <method name="SetFanAuto"/>
+    <method name="SetFanCurve">
+      <arg direction="in" name="target" type="s"/>
+      <arg direction="in" name="points" type="a(uu)"/>
+    </method>
+    <method name="ClearFanCurve">
+      <arg direction="in" name="target" type="s"/>
+    </method>
+  </interface>
+
+  <interface name="io.github.archer.Control1.Battery">
+    <property name="Limiter"     type="b" access="read"/>
+    <property name="Calibration" type="b" access="read"/>
+    <!-- USB charging while asleep: 0 off, 10/20/30 = percent floor -->
+    <property name="UsbCharging" type="u" access="read"/>
+    <method name="SetLimiter">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetCalibration">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetUsbCharging">
+      <arg direction="in" name="level" type="u"/>
+    </method>
+  </interface>
+
+  <!-- Keyboard, mode-button and lid-logo LEDs. Every setter applies
+       immediately; the daemon coalesces bursts (a slider being dragged)
+       to at most 20 writes/s per device. -->
+  <interface name="io.github.archer.Control1.Lighting">
+    <!-- "ene" | "wmi" | "none" -->
+    <property name="Backend"          type="s"      access="read"/>
+    <!-- Four zones, left to right, RGB. -->
+    <property name="Zones"            type="a(yyy)" access="read"/>
+    <property name="Brightness"       type="y"      access="read"/>
+    <!-- "static" | "off" | one of EffectChoices when an effect is active -->
+    <property name="Effect"           type="s"      access="read"/>
+    <property name="EffectChoices"    type="as"     access="read"/>
+    <property name="EffectColor"      type="(yyy)"  access="read"/>
+    <property name="EffectSpeed"      type="y"      access="read"/>
+    <!-- "left" | "right" -->
+    <property name="EffectDirection"  type="s"      access="read"/>
+    <property name="ButtonFollowsProfile" type="b"  access="read"/>
+    <!-- profile -> RGB, used when ButtonFollowsProfile is true -->
+    <property name="ButtonColors"     type="a{s(yyy)}" access="read"/>
+    <property name="LogoColor"        type="(yyy)"  access="read"/>
+    <property name="LogoBrightness"   type="y"      access="read"/>
+    <property name="BacklightTimeout" type="b"      access="read"/>
+    <method name="SetZones">
+      <arg direction="in" name="zones" type="a(yyy)"/>
+      <arg direction="in" name="brightness" type="y"/>
+    </method>
+    <!-- Paint a subset of zones without touching the rest; zone_mask bit n
+         selects zone n (0x3 = left half). -->
+    <method name="SetZoneMask">
+      <arg direction="in" name="zone_mask" type="y"/>
+      <arg direction="in" name="color" type="(yyy)"/>
+    </method>
+    <method name="SetBrightness">
+      <arg direction="in" name="brightness" type="y"/>
+    </method>
+    <method name="SetEffect">
+      <arg direction="in" name="effect" type="s"/>
+      <arg direction="in" name="brightness" type="y"/>
+      <arg direction="in" name="color" type="(yyy)"/>
+      <arg direction="in" name="speed" type="y"/>
+      <arg direction="in" name="direction" type="s"/>
+    </method>
+    <method name="SetOff"/>
+    <method name="SetButtonFollowsProfile">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetButtonColor">
+      <arg direction="in" name="profile" type="s"/>
+      <arg direction="in" name="color" type="(yyy)"/>
+    </method>
+    <method name="SetLogo">
+      <arg direction="in" name="color" type="(yyy)"/>
+      <arg direction="in" name="brightness" type="y"/>
+    </method>
+    <method name="SetBacklightTimeout">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+  </interface>
+
+  <!-- Hybrid-graphics mode via envycontrol. SetMode can take up to a
+       minute and requires a logout; the property flips when the tool
+       returns, not when the session restarts. -->
+  <interface name="io.github.archer.Control1.Display">
+    <property name="Mode"      type="s"  access="read"/>
+    <property name="Choices"   type="as" access="read"/>
+    <property name="HasMux"    type="b"  access="read"/>
+    <property name="ActiveGpu" type="s"  access="read"/>
+    <method name="SetMode">
+      <arg direction="in" name="mode" type="s"/>
+    </method>
+  </interface>
+
+  <interface name="io.github.archer.Control1.Power">
+    <property name="GameMode"          type="b"  access="read"/>
+    <!-- energy_performance_preference currently in effect, "" if unsupported -->
+    <property name="Epp"               type="s"  access="read"/>
+    <property name="LcdOverride"       type="b"  access="read"/>
+    <property name="BootAnimationSound" type="b" access="read"/>
+    <!-- (device, wake_enabled) rows from /proc/acpi/wakeup -->
+    <property name="UsbWakeSources"    type="a(sb)" access="read"/>
+    <method name="SetGameMode">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetLcdOverride">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetBootAnimationSound">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetUsbWake">
+      <arg direction="in" name="device" type="s"/>
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+  </interface>
+
+  <!-- The daemon only renames the pipewire filter file; the client that
+       sees NoiseSuppression change restarts pipewire in its own session. -->
+  <interface name="io.github.archer.Control1.Audio">
+    <property name="NoiseSuppression" type="b" access="read"/>
+    <method name="SetNoiseSuppression">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+  </interface>
+
+  <interface name="io.github.archer.Control1.Firmware">
+    <property name="BiosVersion"    type="s" access="read"/>
+    <property name="FwupdAvailable" type="b" access="read"/>
+    <!-- (device, current_version, available_version) -->
+    <property name="Updates"        type="a(sss)" access="read"/>
+    <property name="LastRefresh"    type="t" access="read"/>   <!-- unix seconds, 0 never -->
+    <!-- Runs fwupdmgr in the background; Updates/LastRefresh change when done. -->
+    <method name="Refresh"/>
+  </interface>
+
+  <interface name="io.github.archer.Control1.Maintenance">
+    <property name="ModprobeParameter" type="s" access="read"/>
+    <method name="SetModprobeParameter">
+      <arg direction="in" name="parameter" type="s"/>
+    </method>
+    <method name="ClearModprobeParameter"/>
+    <method name="RestartDaemon"/>
+    <method name="RestartDriversAndDaemon"/>
+  </interface>
+
+</node>
