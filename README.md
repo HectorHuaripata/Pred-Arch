@@ -17,6 +17,12 @@ is the Qt 6 / QML panel, the typed D-Bus contract (`docs/DBUS_V2.md`), the ENE K
 lighting backend (`docs/ENE_PROTOCOL.md`) and a daemon that does no work while nobody
 is looking.
 
+Developed with the support of [Claude](https://claude.ai) (Anthropic), working as a
+pair-programming assistant: it proposed designs, wrote code and measurements, and
+the maintainer ran everything on the hardware and decided what shipped. Commits
+carry a `Co-Authored-By: Claude` trailer where that applies; every behavioural
+claim in the docs was verified on the machine, not inferred.
+
 ## The compatibility suite
 
 A modular compatibility suite for Acer laptops running Arch Linux and Arch-based distributions. Provides hardware-aware detection, kernel driver installation, a Qt 6 / QML control panel with D-Bus IPC and polkit authorization, and targeted fixes for a broad range of Acer laptop issues on Linux.
