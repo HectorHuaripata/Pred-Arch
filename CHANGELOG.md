@@ -5,6 +5,52 @@ All notable changes to Archer Compatibility Suite are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] — 2026-09-11
+
+Fork for the Predator Helios Neo 16S AI (PHN16S-71). New control panel,
+new D-Bus contract, daemon hot path rewritten.
+
+### Added
+
+- **D-Bus contract v2** `io.github.archer.Control1` (`gui/archer_control.py`,
+  `dbus/io.github.archer.Control1.xml`, `docs/DBUS_V2.md`): typed read-only
+  properties over nine interfaces, `PropertiesChanged` deltas, explicit
+  polkit-gated setters, typed errors. Telemetry is sampled only while a
+  client is subscribed (250–5000 ms, fastest live subscriber wins, dropped
+  on `NameOwnerChanged`).
+- **Qt 6 / QML control panel** (`gui-qt/`): PySide6 + Kirigami, Breeze on
+  Plasma, follows the system colour scheme. Six sections, pages created on
+  first visit, every control bound to the daemon property it shows and
+  applied live — no Apply buttons. Hidden to the tray it unsubscribes and
+  costs no CPU. Tray with quick profile switch.
+- **ENE K5130 keyboard backend** (`gui/archer_ene.py`, `docs/ENE_PROTOCOL.md`)
+  for models where the ACPI-WMI lighting path silently does nothing; verified
+  effects, mode-button LED coloured by profile, lid logo, reapply after
+  resume, late-appearing controller handled.
+- `archer_daemon.py --session-bus` developer mode and `tests/dbus_v2_smoke.py`.
+
+### Changed
+
+- Daemon hot path: sensor paths resolved once, `/proc/stat` deltas instead of
+  an `awk` fork per tick, NVML via ctypes, GPU temperature from the EC hwmon
+  (no dGPU wake-ups), `platform_profile` followed through `sysfs_notify`
+  instead of polling. WMI attributes cost 13–20 ms of CPU per read on this
+  platform and are never polled.
+- Daemon unit starts after `basic.target` instead of `multi-user.target`.
+- Polkit: day-to-day actions (`set-profile`, `set-fan`, `set-hardware`,
+  `set-gamemode`) are allowed without a password for the active local
+  session. `set-display` and `system-control` still prompt.
+- The legacy `TelemetryUpdated` signal is emitted only while a v1 client is
+  on the bus.
+- Installer detects the D-Bus policy directory (`/usr/share/dbus-1/system.d`
+  on Arch) and ships the Qt panel; `archer-gui` launches it.
+
+### Removed
+
+- The GTK4/libadwaita panel (`gui/archer_gui.py`, `gui/archer/`) and its
+  `gtk4`, `libadwaita`, `python-pillow` dependencies. The installer removes
+  it from `/opt/archer` on upgrade.
+
 ## [2.0.1] — 2026-05-01
 
 Hardening sweep triggered by [#4](https://github.com/otectus/Archer/issues/4)

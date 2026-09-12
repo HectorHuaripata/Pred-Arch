@@ -35,7 +35,8 @@ module_install() {
         "$SCRIPT_DIR/gui/archer_dbus.py"
         "$SCRIPT_DIR/gui/archer_control.py"
         "$SCRIPT_DIR/dbus/io.github.archer.Control1.xml"
-        "$SCRIPT_DIR/gui/archer_gui.py"
+        "$SCRIPT_DIR/gui-qt/archer_qt.py"
+        "$SCRIPT_DIR/gui-qt/qml/Main.qml"
         "$SCRIPT_DIR/gui/io.otectus.Archer1.conf"
         "$SCRIPT_DIR/gui/io.otectus.Archer1.policy"
         "$SCRIPT_DIR/gui/archer-daemon.service"
@@ -46,12 +47,13 @@ module_install() {
     for _src in "${_required[@]}"; do
         [[ -f "$_src" ]] || error "Required GUI source file missing: $_src"
     done
-    [[ -d "$SCRIPT_DIR/gui/archer" ]] || error "Required GUI package directory missing: $SCRIPT_DIR/gui/archer"
     [[ -d "$SCRIPT_DIR/gui/assets" ]] || error "Required GUI assets directory missing: $SCRIPT_DIR/gui/assets"
 
     # Install dependencies
     log "Installing GUI dependencies..."
-    run_sudo pacman -S --needed --noconfirm python-gobject gtk4 libadwaita python python-pillow python-dbus \
+    # python-gobject: GLib/Gio for the daemon and the GUI's D-Bus bridge.
+    # python-dbus: the v1 (io.otectus.Archer1) shim, until v3.0.
+    run_sudo pacman -S --needed --noconfirm python python-gobject python-dbus \
         pyside6 qt6-declarative kirigami qqc2-desktop-style
 
     # Create directories
@@ -67,10 +69,11 @@ module_install() {
     if [[ -f "$SCRIPT_DIR/gui/archer_ene.py" ]]; then
         run_sudo cp "$SCRIPT_DIR/gui/archer_ene.py" "$_GUI_INSTALL_DIR/"
     fi
-    run_sudo cp "$SCRIPT_DIR/gui/archer_gui.py" "$_GUI_INSTALL_DIR/"
-    run_sudo cp -r "$SCRIPT_DIR/gui/archer" "$_GUI_INSTALL_DIR/"
     run_sudo cp -r "$SCRIPT_DIR/gui/assets" "$_GUI_INSTALL_DIR/"
-    # Qt 6 / QML control panel (v3). Speaks only the v2 contract.
+    # Retire the GTK panel from earlier installs (2.x): it spoke v1 only.
+    run_sudo rm -rf "$_GUI_INSTALL_DIR/archer" "$_GUI_INSTALL_DIR/archer_gui.py" \
+        "$_GUI_INSTALL_DIR/__pycache__" "${_GUI_LAUNCHER}-gtk"
+    # Qt 6 / QML control panel. Speaks only the v2 contract.
     run_sudo rm -rf "$_GUI_INSTALL_DIR/qt"
     run_sudo cp -r "$SCRIPT_DIR/gui-qt" "$_GUI_INSTALL_DIR/qt"
     run_sudo find "$_GUI_INSTALL_DIR/qt" -name __pycache__ -type d -exec rm -rf {} + 2>/dev/null || true
@@ -98,7 +101,7 @@ module_install() {
 
     # Set permissions
     run_sudo chmod 755 "$_GUI_INSTALL_DIR/archer_daemon.py"
-    run_sudo chmod 755 "$_GUI_INSTALL_DIR/archer_gui.py"
+    run_sudo chmod 755 "$_GUI_INSTALL_DIR/qt/archer_qt.py"
 
     # Install systemd service
     log "Installing daemon service..."
@@ -136,14 +139,8 @@ module_install() {
     log "Creating launcher script..."
     run_sudo tee "$_GUI_LAUNCHER" > /dev/null <<'LAUNCHER_EOF'
 #!/bin/bash
-# Qt/QML control panel. The previous GTK panel stays as archer-gui-gtk.
 exec python3 /opt/archer/qt/archer_qt.py "$@"
 LAUNCHER_EOF
-    run_sudo tee "${_GUI_LAUNCHER}-gtk" > /dev/null <<'LAUNCHER_EOF'
-#!/bin/bash
-exec python3 /opt/archer/archer_gui.py "$@"
-LAUNCHER_EOF
-    run_sudo chmod 755 "${_GUI_LAUNCHER}-gtk"
     run_sudo chmod 755 "$_GUI_LAUNCHER"
 
     # Check for Linuwu-Sense driver
@@ -157,7 +154,7 @@ LAUNCHER_EOF
     log "Daemon status:  sudo systemctl status archer-daemon"
 
     INSTALLED_FILES+=" $_GUI_INSTALL_DIR $_GUI_SERVICE $_GUI_DESKTOP $_GUI_ICON $_GUI_LAUNCHER $_GUI_SETTINGS_DIR $_GUI_DBUS_POLICY_DIR/io.otectus.Archer1.conf /usr/share/polkit-1/actions/io.otectus.Archer1.policy"
-    INSTALLED_PACKAGES+=" python-gobject gtk4 libadwaita python-pillow python-dbus pyside6 qt6-declarative kirigami qqc2-desktop-style"
+    INSTALLED_PACKAGES+=" python-gobject python-dbus pyside6 qt6-declarative kirigami qqc2-desktop-style"
 }
 
 module_uninstall() {
@@ -190,7 +187,7 @@ module_uninstall() {
     run_sudo rm -f /var/run/archer.sock 2>/dev/null || true
     run_sudo rm -f /var/run/archer-daemon.pid 2>/dev/null || true
 
-    log "Archer GUI removed. Packages retained (remove manually with: sudo pacman -Rns python-gobject gtk4 libadwaita python-pillow)"
+    log "Archer GUI removed. Packages retained (remove manually with: sudo pacman -Rns pyside6 kirigami qqc2-desktop-style)"
 }
 
 module_verify() {
@@ -208,6 +205,11 @@ module_verify() {
 
     if [[ ! -f "$_GUI_DESKTOP" ]]; then
         warn "Desktop entry not found"
+        ok=1
+    fi
+
+    if [[ ! -f "$_GUI_INSTALL_DIR/qt/archer_qt.py" ]]; then
+        warn "Qt control panel not found at $_GUI_INSTALL_DIR/qt"
         ok=1
     fi
 

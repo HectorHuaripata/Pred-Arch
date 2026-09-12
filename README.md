@@ -4,7 +4,7 @@ Have an Acer laptop running Arch Linux? You're in the right place.
 
 ![Archer Compatibility Suite](https://i.imgur.com/KvbGFQw.png)
 
-A modular compatibility suite for Acer laptops running Arch Linux and Arch-based distributions. Provides hardware-aware detection, kernel driver installation, a GTK4 control panel with D-Bus IPC and polkit authorization, and targeted fixes for a broad range of Acer laptop issues on Linux.
+A modular compatibility suite for Acer laptops running Arch Linux and Arch-based distributions. Provides hardware-aware detection, kernel driver installation, a Qt 6 / QML control panel with D-Bus IPC and polkit authorization, and targeted fixes for a broad range of Acer laptop issues on Linux.
 
 ## Supported Hardware
 
@@ -33,15 +33,16 @@ A modular compatibility suite for Acer laptops running Arch Linux and Arch-based
 Archer uses a root daemon with a D-Bus system service for secure hardware control:
 
 ```
-Archer GUI (GTK4/Adwaita)  ──  D-Bus (io.otectus.Archer1)  ──  Archer Daemon (root)
-       │                              │                              │
-  11 pages                     polkit auth                    sysfs / hwmon
-  system tray               session-cached                  Linuwu-Sense driver
+Archer GUI (Qt 6 / QML)  ──  D-Bus (io.github.archer.Control1)  ──  Archer Daemon (root)
+       │                              │                                  │
+  6 sections                   typed properties                     sysfs / hwmon / NVML
+  system tray                  PropertiesChanged deltas             Linuwu-Sense · ENE K5130
+  live bindings                polkit on setters
 ```
 
 - **Daemon** (`archer-daemon.service`): Runs as root, communicates with hardware via sysfs/hwmon, exposes a D-Bus interface with polkit-protected methods.
-- **D-Bus service** (`io.otectus.Archer1`): Read-only methods (telemetry, settings) are unprivileged. Mutating methods (fan control, profile switching, display mode) require polkit authorization, cached per session.
-- **GUI**: GTK4/Adwaita application with system tray support (close-to-tray via D-Bus StatusNotifierItem). Connects to daemon exclusively through D-Bus.
+- **D-Bus contract v2** (`io.github.archer.Control1`, see `docs/DBUS_V2.md`): every reading and setting is a typed property; changes arrive as `PropertiesChanged` deltas; telemetry is sampled only while a client is subscribed. Setters are polkit-gated; the active local session needs no password for day-to-day controls. The legacy `io.otectus.Archer1` JSON interface is still served for third-party scripts and goes away in 3.0.
+- **GUI** (`gui-qt/`): Qt 6 / QML with Kirigami, Breeze-native on Plasma, follows the system colour scheme. Pages are created on first visit; hidden to the tray it unsubscribes from telemetry and costs no CPU.
 - **Installer**: Bash-based modular system with 13 modules, hardware detection, manifest tracking, and interactive menu.
 
 ## Available Modules
@@ -88,18 +89,14 @@ Enables native `acer_wmi` thermal profile support on kernel 6.8+. Provides acces
 > **Conflict Warning**: This module requires `acer_wmi` to be loaded, which conflicts with the driver module (Linuwu-Sense blacklists `acer_wmi`). You cannot use both simultaneously.
 
 ### 9. Archer GUI (gui)
-GTK4/Adwaita control panel with a root daemon for real-time hardware management. The daemon exposes a D-Bus service (`io.otectus.Archer1`) with polkit authorization for secure access. Features include:
-- **Dashboard** — CPU/GPU temperatures, usage, fan RPM, battery status with live charts
-- **Performance** — Thermal profile selection, fan control (automatic/manual/custom curves)
-- **Battery** — Charge limit toggle, battery calibration, USB charging levels
-- **Keyboard** — 4-zone RGB color pickers, lighting effects, backlight timeout
-- **Display** — GPU mode switching (integrated/hybrid/nvidia) with reboot gating
-- **Game Mode** — One-click performance optimization (governor, EPP, NVIDIA persistence)
-- **Audio** — Noise suppression toggle for the PipeWire virtual source
-- **Firmware** — BIOS version display, fwupd update status
-- **System** — LCD override, boot sound, system info, driver version
-- **Internals** — Driver parameter forcing, daemon/driver restart controls
-- **System tray** — Close-to-tray via D-Bus StatusNotifierItem, works on Wayland
+Qt 6 / QML control panel with a root daemon for real-time hardware management. Every control reflects the hardware within a second, whoever changed it (the mode button, Plasma, a script), and applies as you move it — there are no Apply buttons.
+- **Overview** — animated CPU/GPU temperature and usage gauges, fan RPM, battery, 5-minute chart, profile bar
+- **Performance** — profile, game mode, fans (automatic / manual / curve)
+- **Lighting** — four-zone keyboard preview (click a zone to colour it alone), swatches and colour dialog applied live, effects, mode-button LED colour per profile, lid logo, backlight timeout
+- **Battery & Power** — charge limit, calibration, USB charging while asleep, LCD override, boot sound, wake sources
+- **Display & Audio** — GPU mode (integrated/hybrid/nvidia) via envycontrol, microphone noise suppression
+- **System** — machine info, detected capabilities, firmware updates, driver parameter, daemon/driver restart
+- **System tray** — quick profile switch, temperatures in the tooltip; closing the window hides to the tray
 
 > **Note**: Requires a display server (X11 or Wayland). Install the driver module first for full hardware control.
 
@@ -254,13 +251,19 @@ Archer/
   gui/
     archer_daemon.py              # Root daemon (D-Bus, sysfs, fan curves, game mode)
     archer_dbus.py                # D-Bus service with polkit authorization
-    archer_gui.py                 # GTK4 application launcher
+    archer_control.py             # D-Bus contract v2 (io.github.archer.Control1)
+    archer_ene.py                 # ENE K5130 keyboard/LED backend
     io.otectus.Archer1.conf       # D-Bus system bus policy
     io.otectus.Archer1.policy     # Polkit action definitions
     archer-daemon.service         # Systemd service unit
     io.github.archer.desktop      # Desktop entry
-    archer/                       # GUI modules (11 pages, client, tray, widgets)
     assets/                       # Icons (SVG, PNG)
+  gui-qt/
+    archer_qt.py                  # Qt 6 / QML control panel entry point
+    archerqt/                     # D-Bus bridge (Gio) and application glue
+    qml/                          # Main window, pages, components
+  dbus/
+    io.github.archer.Control1.xml # Contract v2 introspection (source of truth)
 ```
 
 ## Technical Notes
@@ -269,7 +272,7 @@ Archer/
 - **BIOS Configuration**: Some Acer laptops ship with RAID storage mode enabled. Switch to AHCI mode in BIOS for Linux compatibility. Disable Fast Startup for dual-boot setups.
 - **CachyOS**: The installer automatically detects CachyOS kernels and installs the correct `-cachyos-headers` package. Clang/LLVM compiler flags are applied when a Clang-built kernel is detected.
 - **AUR Helpers**: Modules that install AUR packages (battery, GPU, audio-enhance) prefer `paru` or `yay` if available, with manual fallback otherwise. The installer never installs an AUR helper for you.
-- **D-Bus / Polkit**: The daemon registers as `io.otectus.Archer1` on the system bus. Read-only methods are unprivileged. Mutating methods require polkit authorization, cached per session (`auth_admin_keep`). System-level operations (restart, modprobe) always prompt (`auth_admin`).
+- **D-Bus / Polkit**: The daemon registers `io.github.archer.Control1` (v2, typed) and `io.otectus.Archer1` (legacy JSON) on the system bus. Reading is unprivileged. Day-to-day setters (profile, fans, lighting, battery, game mode) need no password in the active local session; the GPU mode switch asks once per session (`auth_admin_keep`) and system-level operations (restart, modprobe) always prompt (`auth_admin`).
 - **Install Manifest**: Stored at `/var/lib/archer/install-manifest.json` (root-owned, 0644). Tracks installed modules, files, DKMS modules, and packages for clean uninstallation. Manifests from older user-home locations (`~/.local/share/archer/`, legacy `~/.local/share/damx/`) are migrated automatically on the next install or uninstall run.
 - **Fan Curve Safety**: The fan curve engine includes a watchdog that restores EC automatic control if the daemon crashes or 3 consecutive control ticks fail.
 
