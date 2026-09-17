@@ -5,6 +5,18 @@ All notable changes to Archer Compatibility Suite are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **One panel per session.** Launching Archer while it was already running
+  started another full instance: another telemetry subscription, another
+  tray icon, ~70 MB more, and two windows able to send contradictory
+  commands. The panel now owns `io.github.archer.Panel` on the session bus;
+  a second launch calls `Activate()` on the running one — which shows and
+  raises its window — and exits. Hardware writes were already serialised
+  by the daemon; this removes the duplicate front ends.
+
 ## [2.1.1] — 2026-09-12
 
 ### Fixed

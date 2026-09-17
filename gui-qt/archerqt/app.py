@@ -4,6 +4,8 @@ catalog, history and controller into the QML engine, and runs.
 
 Command line:
     --hidden    start in the tray without showing the window
+Only one panel runs per session: launching it again shows the existing
+window (io.github.archer.Panel on the session bus).
 Environment:
     ARCHER_PREFIX   where the daemon files are installed (default /opt/archer)
     ARCHER_BUS      "session" to talk to `archer_daemon.py --session-bus`
@@ -27,6 +29,7 @@ from archerqt.catalog import Catalog
 from archerqt.controller import AppController
 from archerqt.history import History
 from archerqt.settings import ORGANIZATION, AppSettings
+from archerqt.single_instance import SingleInstance
 
 logger = logging.getLogger("archer-qt")
 
@@ -75,6 +78,13 @@ def main(argv=None):
     _let_python_handle_sigint(app)
     _translator = _install_translator(app)   # noqa: F841 — keep referenced
 
+    # One panel per session. A second launch raises the first one's window
+    # and exits before touching the daemon or the tray.
+    instance = SingleInstance()
+    if not instance.acquire():
+        instance.activate_existing()
+        return 0
+
     # Context objects are not owned by the engine; everything handed to
     # QML must stay referenced here for the life of the application.
     settings = AppSettings()
@@ -99,6 +109,7 @@ def main(argv=None):
 
     window = engine.rootObjects()[0]
     controller.attach_window(window)
+    instance.serve(controller.showWindow)
     if "--hidden" not in argv:
         window.show()
 
