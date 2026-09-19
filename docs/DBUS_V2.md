@@ -86,6 +86,19 @@ rate-limited the same way.
 `SetZoneMask` exposes the controller's native bitmask so a client can paint
 half the keyboard in one write instead of four.
 
+## Battery: calibration is a cycle, not a setting
+
+`Battery.Calibration` reflects a mode the embedded controller runs by
+itself: full discharge, then a full charge, several hours in total.
+`SetCalibration(true)` starts it, `SetCalibration(false)` cancels it, and
+the firmware clears the flag when the cycle ends (the driver applies the
+WMI calibration event). The daemon never persists or restores it, and
+re-reads the flag — one WMI call — only while a cycle is known to be
+running (on the 10 s telemetry tick with subscribers, on the 30 s safety
+poll without), so clients see it finish. A client should present it as
+start / progress / cancel; a switch would suggest a preference that
+survives a reboot, which it is not.
+
 ## Power: CPU energy policy per profile
 
 The `Power` interface exposes what the `intel_pstate` (or `cpufreq`) driver

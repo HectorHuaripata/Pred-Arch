@@ -55,7 +55,7 @@ class ArcherControl(SystemInterface, TelemetryInterface, ThermalInterface, Batte
         if self._npu.available and "npu" not in hw.features:
             hw.features.append("npu")
         self.telemetry = TelemetrySampler(hw, self.store, self._conn, cpu=self._cpu, npu=self._npu,
-                                          slow_hook=self._storage_refresh)
+                                          slow_hook=self._slow_refresh)
         self._lighting = LightingCoalescer()
         self._display_busy = False
         self._firmware_busy = False
@@ -240,11 +240,19 @@ class ArcherControl(SystemInterface, TelemetryInterface, ThermalInterface, Batte
             self._apply_epp_for_profile(profile)
         self.store.update(self._iface("Thermal"), self._thermal_values(profile))
 
+    def _slow_refresh(self):
+        """Telemetry's slow tick (SLOW_PERIOD_S, subscribers only): storage
+        readings and the running-calibration check."""
+        self._storage_refresh()
+        self._calibration_watch()
+
     def _watch_slow_state(self):
         """Every SLOW_POLL_S: ENE readiness, fan-curve state, and one
-        profile read as a safety net for the notify watch. One WMI read."""
+        profile read as a safety net for the notify watch. One WMI read
+        (two while a battery calibration cycle is running)."""
         try:
             self._on_profile_value(self.hw.get_thermal_profile())
+            self._calibration_watch()
             self.store.update(self._iface("System"), {
                 "EneReady": bool(getattr(self.hw, "ene_ready", False)),
                 "Features": list(self.hw.features),

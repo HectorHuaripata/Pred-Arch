@@ -45,6 +45,15 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   restore-defaults button. Session side through `v4l2-ctl`; the daemon is
   not involved. New installer dependency `v4l-utils`.
 
+### Changed
+
+- **Battery calibration is a cycle, not a switch.** The Battery & Power
+  page now offers "Start calibration cycle" behind a confirmation, shows
+  the phase (draining / charging back up, with the percentage) while the
+  EC runs it and a Cancel button. The daemon stopped persisting the flag
+  and re-reads it while a cycle is running, so the panel sees the EC
+  finish instead of showing an "on" switch forever.
+
 ### Fixed
 
 - **Noise suppression toggle reported success without the filter.** It now

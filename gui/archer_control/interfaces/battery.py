@@ -1,5 +1,12 @@
 """
 Battery: charge limiter, calibration, USB charging while asleep.
+
+Calibration is not a setting but a cycle the embedded controller runs on
+its own (full discharge, then a full charge, several hours). Writing 1
+starts it, writing 0 cancels it, and the firmware clears the flag itself
+when the cycle ends (the driver applies the WMI calibration event). The
+daemon therefore never persists it, and re-reads the flag — one WMI call —
+only while a cycle is known to be running, so clients see it finish.
 """
 
 from archer_control.common import ControlError
@@ -29,8 +36,14 @@ class BatteryInterface:
     def _m_Battery_SetCalibration(self, sender, enabled):
         if not self.hw.set_battery_calibration(bool(enabled)):
             raise ControlError("HardwareFailure", "battery_calibration write failed")
-        self.hw.settings.set("battery_calibration", bool(enabled))
         self.store.update(self._iface("Battery"), self._battery_values())
+
+    def _calibration_watch(self):
+        """Re-read the calibration flag while a cycle is running so the
+        property drops to false when the EC finishes or aborts it."""
+        if self.store.value(self._iface("Battery"), "Calibration"):
+            self.store.update(self._iface("Battery"),
+                              {"Calibration": bool(self.hw.get_battery_calibration())})
 
     def _m_Battery_SetUsbCharging(self, sender, level):
         if level not in (0, 10, 20, 30):
