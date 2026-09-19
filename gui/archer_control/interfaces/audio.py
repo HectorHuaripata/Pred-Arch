@@ -17,6 +17,14 @@ class AudioInterface:
 
     def _m_Audio_SetNoiseSuppression(self, sender, enabled):
         disabled = NOISE_CONF + ".disabled"
+        if not os.path.exists(NOISE_CONF) and not os.path.exists(disabled):
+            # Nothing to rename: the audio-enhance installer module was never
+            # run on this machine. Say so instead of silently reverting.
+            raise ControlError(
+                "Unsupported",
+                "noise suppression filter is not installed; run "
+                "`./install.sh --modules audio-enhance` to add the RNNoise "
+                "PipeWire filter")
         try:
             if enabled:
                 if os.path.exists(disabled) and not os.path.exists(NOISE_CONF):
