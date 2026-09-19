@@ -44,6 +44,13 @@ NOISE_CONF = "/etc/pipewire/filter-chain.conf.d/archer-noise-suppress.conf"
 MODPROBE_CONF = "/etc/modprobe.d/linuwu-sense.conf"
 MODPROBE_PARAMS = ("nitro_v4", "predator_v4", "enable_all")
 FAN_CURVE_TARGETS = ("cpu", "gpu")
+# Delay before reapplying the user's per-profile EPP after a profile
+# change, so it lands after power-profiles-daemon's own write.
+EPP_REAPPLY_DELAY_MS = 500
+NVIDIA_POWERD_BIN = "/usr/bin/nvidia-powerd"
+NVIDIA_POWERD_UNIT = "nvidia-powerd.service"
+# Storage and other slow readings refresh on this period of the telemetry tick.
+SLOW_PERIOD_S = 10
 
 # Effect names for the sysfs/WMI four_zone_mode fallback, indexed by the
 # driver's mode number. The ENE backend supplies its own verified list.
@@ -82,6 +89,11 @@ POLKIT_ACTIONS = {
     "Power.SetLcdOverride": "io.otectus.archer1.set-hardware",
     "Power.SetBootAnimationSound": "io.otectus.archer1.set-hardware",
     "Power.SetUsbWake": "io.otectus.archer1.set-hardware",
+    "Power.SetEpp": "io.otectus.archer1.set-hardware",
+    "Power.ClearEppOverride": "io.otectus.archer1.set-hardware",
+    "Power.SetTurbo": "io.otectus.archer1.set-hardware",
+    "Power.SetCpuGovernor": "io.otectus.archer1.set-hardware",
+    "Power.SetDynamicBoost": "io.otectus.archer1.system-control",
     "Audio.SetNoiseSuppression": "io.otectus.archer1.set-hardware",
     "Audio.SetSpeakerDrc": "io.otectus.archer1.set-hardware",
     "Audio.SetAutoMute": "io.otectus.archer1.set-hardware",
@@ -122,6 +134,11 @@ FEATURE_GATES = {
     "Power.SetLcdOverride": ("lcd_override",),
     "Power.SetBootAnimationSound": ("boot_animation_sound",),
     "Power.SetUsbWake": ("usb_wake_policy",),
+    "Power.SetEpp": ("cpu_epp",),
+    "Power.ClearEppOverride": ("cpu_epp",),
+    "Power.SetTurbo": ("cpu_turbo",),
+    "Power.SetCpuGovernor": ("cpu_governor",),
+    "Power.SetDynamicBoost": ("nvidia_dynamic_boost",),
     "Audio.SetSpeakerDrc": ("audio_dsp",),
     "Audio.SetAutoMute": ("audio_dsp",),
     "Audio.SetMicDrc": ("audio_dsp",),

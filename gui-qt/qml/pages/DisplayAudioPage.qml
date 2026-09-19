@@ -22,6 +22,9 @@ Kirigami.ScrollablePage {
         return deg < 0 ? qsTr("%1° · to your left").arg(-deg) : qsTr("%1° · to your right").arg(deg)
     }
 
+    onVisibleChanged: if (visible) Panel.refresh()
+    Component.onCompleted: Panel.refresh()
+
     Connections {
         target: Bus
         function onCallSucceeded(iface, method) { if (iface === "Display") page.pendingMode = "" }
@@ -59,6 +62,27 @@ Kirigami.ScrollablePage {
                 QQC2.BusyIndicator { running: page.pendingMode !== ""; visible: running }
                 QQC2.Label { visible: page.pendingMode !== ""; text: qsTr("Switching to %1…").arg(page.pendingMode) }
             }
+        }
+
+        // -- Built-in panel refresh rate (KScreen, session side) ----------------
+        Card {
+            title: qsTr("Built-in panel")
+            visible: Panel.available
+            subtitle: Panel.panelEnabled ? Panel.resolution : qsTr("switched off (external display in use)")
+            RowLayout {
+                spacing: Kirigami.Units.smallSpacing
+                enabled: Panel.panelEnabled
+                QQC2.Label { text: qsTr("Refresh rate") }
+                Repeater {
+                    model: Panel.refreshRates
+                    delegate: ChoiceButton {
+                        required property var modelData
+                        text: qsTr("%1 Hz").arg(modelData); current: Math.round(Panel.currentRefresh) === modelData
+                        onClicked: Panel.setRefresh(modelData)
+                    }
+                }
+            }
+            Hint { text: qsTr("Lower rates save battery; the highest is for games. Plasma remembers the choice per display.") }
         }
 
         // -- Speakers: processing inside the SOF DSP, zero CPU -----------------

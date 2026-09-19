@@ -38,6 +38,59 @@ Kirigami.ScrollablePage {
         }
 
         Card {
+            id: cpuCard
+            title: qsTr("CPU")
+            visible: (Power.eppChoices || []).length > 0 || Power.turboAvailable === true
+            subtitle: {
+                var topo = Power.cpuTopology || [0, 0]
+                var parts = []
+                if (topo[0] > 0 || topo[1] > 0) parts.push(qsTr("%1 P-cores · %2 E-cores").arg(topo[0]).arg(topo[1]))
+                if (Telemetry.cpuFreqMhz > 0) parts.push(qsTr("%1 MHz average").arg(Telemetry.cpuFreqMhz))
+                return parts.join(" · ")
+            }
+            readonly property string profile: Thermal.profile || ""
+            readonly property bool overridden: (Power.eppByProfile || ({}))[profile] !== undefined
+            QQC2.Label { text: qsTr("Energy preference for the %1 profile").arg(Catalog.profileLabel(cpuCard.profile)); visible: (Power.eppChoices || []).length > 0 }
+            Flow {
+                Layout.fillWidth: true
+                spacing: Kirigami.Units.smallSpacing
+                visible: (Power.eppChoices || []).length > 0
+                Repeater {
+                    model: Power.eppChoices || []
+                    delegate: ChoiceButton {
+                        required property string modelData
+                        text: Catalog.eppLabel(modelData); current: Power.epp === modelData
+                        QQC2.ToolTip.text: Catalog.eppHint(modelData); QQC2.ToolTip.visible: hovered
+                        onClicked: Bus.call("Power", "SetEpp", [modelData])
+                    }
+                }
+                QQC2.Button { text: qsTr("Follow the OS"); icon.name: "edit-undo"; visible: cpuCard.overridden
+                    onClicked: Bus.call("Power", "ClearEppOverride", [cpuCard.profile]) }
+            }
+            Hint { visible: (Power.eppChoices || []).length > 0
+                   text: cpuCard.overridden ? qsTr("Pred-Arch reapplies this choice whenever the %1 profile becomes active, overriding the desktop's power daemon.").arg(Catalog.profileLabel(cpuCard.profile))
+                                    : qsTr("Currently set by the desktop's power daemon for this profile. Pick one to override it for this profile only.") }
+            BoundSwitch { visible: Power.turboAvailable === true; text: qsTr("Turbo / boost clocks"); bound: Power.turbo === true; apply: v => Bus.call("Power", "SetTurbo", [v]) }
+            RowLayout {
+                visible: (Power.cpuGovernors || []).length > 1
+                QQC2.Label { text: qsTr("Frequency governor") }
+                Repeater {
+                    model: Power.cpuGovernors || []
+                    delegate: ChoiceButton { required property string modelData; text: modelData; current: Power.cpuGovernor === modelData
+                        onClicked: Bus.call("Power", "SetCpuGovernor", [modelData]) }
+                }
+            }
+        }
+
+        Card {
+            title: qsTr("Discrete GPU")
+            visible: Power.dynamicBoostAvailable === true
+            subtitle: Telemetry.gpuPowerW > 0 ? qsTr("%1 W now").arg(Telemetry.gpuPowerW.toFixed(1)) : ""
+            BoundSwitch { text: qsTr("Dynamic Boost (nvidia-powerd)"); bound: Power.dynamicBoost === true; apply: v => Bus.call("Power", "SetDynamicBoost", [v]) }
+            Hint { text: qsTr("Lets the GPU borrow power budget from the CPU when a game needs it (up to the GPU's maximum limit). Needs an administrator: it enables a system service.") }
+        }
+
+        Card {
             title: qsTr("Fans")
             visible: page.hasFans
             subtitle: ({ "auto": qsTr("EC controls the fans"), "manual": qsTr("fixed duty"), "curve": qsTr("following a curve") })[Thermal.fanMode] || ""

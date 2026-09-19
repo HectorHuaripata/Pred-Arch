@@ -203,6 +203,17 @@ class _Nvml:
     def temperature(self):
         return self._cache.get_or_compute("temp", self._read_temperature)
 
+    def power_watts(self):
+        return self._cache.get_or_compute("power", self._read_power)
+
+    def _read_power(self):
+        if not self._init():
+            return None
+        milliwatts = ctypes.c_uint()
+        if self._lib.nvmlDeviceGetPowerUsage(self._handle, ctypes.byref(milliwatts)) != 0:
+            return None
+        return milliwatts.value / 1000.0
+
     def utilization(self):
         return self._cache.get_or_compute("util", self._read_utilization)
 
@@ -1068,6 +1079,11 @@ class HardwareManager:
             return int(fan1 or 0), int(fan2 or 0)
         except ValueError:
             return 0, 0
+
+    def get_gpu_power(self):
+        """Discrete GPU power draw in watts (NVML), 0.0 when unavailable."""
+        watts = _NVML.power_watts()
+        return float(watts) if watts is not None else 0.0
 
     def get_memory(self):
         """(used_mib, total_mib): used = MemTotal - MemAvailable, like free(1).

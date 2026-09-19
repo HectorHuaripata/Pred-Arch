@@ -7,7 +7,7 @@ import time
 from gi.repository import Gio, GLib
 
 from archer_control.common import logger
-from archer_control.constants import BATTERY_PERIOD_S, BUS_NAME, INTERVAL_MAX_MS, INTERVAL_MIN_MS
+from archer_control.constants import BATTERY_PERIOD_S, BUS_NAME, INTERVAL_MAX_MS, INTERVAL_MIN_MS, SLOW_PERIOD_S
 
 
 class TelemetrySampler:
@@ -20,10 +20,14 @@ class TelemetrySampler:
 
     IFACE = BUS_NAME + ".Telemetry"
 
-    def __init__(self, hw, store, conn):
+    def __init__(self, hw, store, conn, cpu=None, npu=None, slow_hook=None):
         self.hw = hw
         self.store = store
         self._conn = conn
+        self._cpu = cpu                  # CpuPolicy or None
+        self._npu = npu                  # NpuProbe or None
+        self._slow_hook = slow_hook      # called every SLOW_PERIOD_S while sampling
+        self._last_slow = 0.0
         self._subs = {}        # sender -> (interval_ms, watch_id)
         self._timer = 0
         self._interval = 0
@@ -92,12 +96,18 @@ class TelemetrySampler:
                 "FanRpm": (int(cpu_rpm or 0), int(gpu_rpm or 0)),
                 "PowerSourceAc": bool(self.hw.get_power_source()),
                 "Memory": tuple(int(v) for v in self.hw.get_memory()),
+                "CpuFreqMhz": int(self._cpu.average_mhz()) if self._cpu else 0,
+                "NpuUsage": int(self._npu.usage_percent()) if self._npu and self._npu.available else 0,
+                "GpuPowerW": float(self.hw.get_gpu_power()),
             }
             now = time.monotonic()
             if force_battery or now - self._last_battery >= BATTERY_PERIOD_S:
                 self._last_battery = now
                 values["Battery"] = self._battery()
             self.store.update(self.IFACE, values)
+            if self._slow_hook and (force_battery or now - self._last_slow >= SLOW_PERIOD_S):
+                self._last_slow = now
+                self._slow_hook()
         except Exception as e:
             # A transient sysfs hiccup must not kill the timer.
             logger.warning(f"Telemetry sample failed: {e}")

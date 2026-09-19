@@ -8,6 +8,9 @@ import os
 from gi.repository import Gio, GLib
 
 from archer_control.coalescer import LightingCoalescer
+from archer_control.cpu import CpuPolicy
+from archer_control.npu import NpuProbe
+from archer_control.storage import StorageProbe
 from archer_control.common import ControlError, load_node_info, logger
 from archer_control.constants import (BUS_NAME, ERROR_PREFIX, FEATURE_GATES, OBJECT_PATH,
                                       PLATFORM_PROFILE_PATH, POLKIT_ACTIONS, SLOW_POLL_S)
@@ -18,6 +21,7 @@ from archer_control.interfaces.firmware import FirmwareInterface
 from archer_control.interfaces.lighting import LightingInterface
 from archer_control.interfaces.maintenance import MaintenanceInterface
 from archer_control.interfaces.power import PowerInterface
+from archer_control.interfaces.storage import StorageInterface
 from archer_control.interfaces.system import SystemInterface
 from archer_control.interfaces.telemetry import TelemetryInterface
 from archer_control.interfaces.thermal import ThermalInterface
@@ -27,7 +31,7 @@ from archer_control.telemetry import TelemetrySampler
 
 class ArcherControl(SystemInterface, TelemetryInterface, ThermalInterface, BatteryInterface,
                     LightingInterface, DisplayInterface, PowerInterface, AudioInterface,
-                    FirmwareInterface, MaintenanceInterface):
+                    FirmwareInterface, MaintenanceInterface, StorageInterface):
     """Registers the v2 object on the bus and routes calls to HardwareManager.
 
     Dispatch convention: a D-Bus call to `<Interface>.<Method>` runs the
@@ -45,7 +49,13 @@ class ArcherControl(SystemInterface, TelemetryInterface, ThermalInterface, Batte
         self._conn = Gio.bus_get_sync(bus_type, None)
         self._node = load_node_info(xml_path)
         self.store = PropertyStore(self._conn, self._node)
-        self.telemetry = TelemetrySampler(hw, self.store, self._conn)
+        self._cpu = CpuPolicy()
+        self._npu = NpuProbe()
+        self._storage = StorageProbe()
+        if self._npu.available and "npu" not in hw.features:
+            hw.features.append("npu")
+        self.telemetry = TelemetrySampler(hw, self.store, self._conn, cpu=self._cpu, npu=self._npu,
+                                          slow_hook=self._storage_refresh)
         self._lighting = LightingCoalescer()
         self._display_busy = False
         self._firmware_busy = False
@@ -59,7 +69,9 @@ class ArcherControl(SystemInterface, TelemetryInterface, ThermalInterface, Batte
             self._reg_ids.append(reg)
 
         self._init_audio_dsp()
+        self._init_cpu_policy()
         self._seed_all()
+        self._apply_epp_for_profile(self._last_profile, delayed=False)
         self._profile_fd = None
         self._profile_watch = 0
         self._watch_profile_notify()
@@ -183,6 +195,7 @@ class ArcherControl(SystemInterface, TelemetryInterface, ThermalInterface, Batte
         s.seed(self._iface("Audio"), self._audio_values())
         s.seed(self._iface("Firmware"), self._firmware_static_values())
         s.seed(self._iface("Maintenance"), {"ModprobeParameter": self._read_modprobe()})
+        s.seed(self._iface("Storage"), self._storage_values())
         self.telemetry.sample_now()
         self._last_profile = s.value(self._iface("Thermal"), "Profile")
 
@@ -224,6 +237,7 @@ class ArcherControl(SystemInterface, TelemetryInterface, ThermalInterface, Batte
             # Keeps the button LED in step; a no-op without the ENE.
             self.hw.poll_profile_led()
             logger.info(f"platform_profile is now {profile}")
+            self._apply_epp_for_profile(profile)
         self.store.update(self._iface("Thermal"), self._thermal_values(profile))
 
     def _watch_slow_state(self):

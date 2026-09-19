@@ -54,7 +54,7 @@ module_install() {
     # python-gobject: GLib/Gio for the daemon and the GUI's D-Bus bridge.
     # python-dbus: the v1 (io.otectus.Archer1) shim, until v3.0.
     run_sudo pacman -S --needed --noconfirm python python-gobject python-dbus \
-        pyside6 qt6-declarative kirigami qqc2-desktop-style
+        pyside6 qt6-declarative kirigami qqc2-desktop-style v4l-utils
 
     # Create directories
     run_sudo mkdir -p "$_GUI_INSTALL_DIR"

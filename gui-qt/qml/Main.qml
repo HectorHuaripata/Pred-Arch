@@ -24,10 +24,11 @@ Kirigami.ApplicationWindow {
         { title: qsTr("Lighting"),        icon: "input-keyboard",            source: "pages/LightingPage.qml" },
         { title: qsTr("Battery & Power"), icon: "battery",                   source: "pages/PowerPage.qml" },
         { title: qsTr("Display & Audio"), icon: "video-display",             source: "pages/DisplayAudioPage.qml" },
+        { title: qsTr("Camera"),          icon: "camera-web",                source: "pages/CameraPage.qml" },
         { title: qsTr("System"),          icon: "computer",                  source: "pages/SystemPage.qml" }
     ]
     property int currentSection: 0
-    property var visited: [true, false, false, false, false, false]
+    property var visited: [true, false, false, false, false, false, false]
     onCurrentSectionChanged: {
         if (!visited[currentSection]) { var v = visited.slice(); v[currentSection] = true; visited = v }
         App.overviewVisible = currentSection === 0

@@ -23,9 +23,9 @@ property, and makes the daemon do work only while someone is watching.
 ## Shape
 
 - **Bus**: system. **Name**: `io.github.archer.Control1`. **Object**: `/io/github/archer/Control1`.
-- **One object, nine interfaces** (`System`, `Telemetry`, `Thermal`, `Battery`,
-  `Lighting`, `Display`, `Power`, `Audio`, `Firmware`, `Maintenance`). A client
-  watches only the interfaces it cares about.
+- **One object, eleven interfaces** (`System`, `Telemetry`, `Thermal`, `Battery`,
+  `Lighting`, `Display`, `Power`, `Storage`, `Audio`, `Firmware`, `Maintenance`).
+  A client watches only the interfaces it cares about.
 - **State is read-only properties.** Mutations are explicit methods so the
   daemon can run polkit against the caller — `org.freedesktop.DBus.Properties.Set`
   is not implemented.
@@ -48,8 +48,11 @@ rules beyond "emit when changed":
    `PropertiesChanged` with the deltas. Temperatures are whole degrees and
    usage is an integer percent, so a quiet machine produces near-empty
    emissions.
-5. `Battery` is sampled every 10 s regardless of the interval; it does not
-   change faster than that.
+5. `Battery` and the `Storage` interface are sampled every 10 s regardless
+   of the interval (`SLOW_PERIOD_S`); neither changes faster than that.
+   `Memory` (`(uu)` used/total MiB), `CpuFreqMhz` (average over online
+   cores), `NpuUsage` (from the `intel_vpu` busy-time counter) and
+   `GpuPowerW` (NVML) ride on the same tick as the temperatures.
 6. Per-sample cost budget: no subprocess. `/proc/stat` is parsed in Python;
    hwmon and thermal paths are resolved **once** at startup (and again on
    `RestartDriversAndDaemon`); NVIDIA readings come from NVML through
@@ -82,6 +85,44 @@ rate-limited the same way.
 
 `SetZoneMask` exposes the controller's native bitmask so a client can paint
 half the keyboard in one write instead of four.
+
+## Power: CPU energy policy per profile
+
+The `Power` interface exposes what the `intel_pstate` (or `cpufreq`) driver
+offers on the machine: the energy-performance preference (`Epp`,
+`EppChoices`), turbo (`Turbo`, `TurboAvailable`), the scaling governor
+(`CpuGovernor`, `CpuGovernors`) and the hybrid topology (`CpuTopology` =
+performance cores, efficiency cores). Missing sysfs files remove the
+feature (`cpu_epp`, `cpu_turbo`, `cpu_governor` in `System.Features`) and
+the setters raise `Unsupported`.
+
+`SetEpp` applies at once **and is remembered for the active platform
+profile** (`EppByProfile`). When the profile changes — from the panel, the
+hardware button or `powerprofilesctl` — the daemon reapplies the stored
+preference 500 ms later (`EPP_REAPPLY_DELAY_MS`), after
+`power-profiles-daemon` has written its own default, so the user's choice
+wins without fighting the OS on every write. `ClearEppOverride(profile)`
+drops the override and the OS default applies again on the next change.
+Turbo and governor are applied to every core, remembered in the daemon
+settings and restored at startup (the kernel resets them on boot).
+
+`DynamicBoost` is NVIDIA's `nvidia-powerd` service (shifts power budget
+between CPU and dGPU on laptops with the feature); the setter enables or
+disables the unit through `systemctl`, which is why it sits behind
+`system-control` rather than `set-hardware`. `DynamicBoostAvailable` says
+whether the binary is installed.
+
+## Storage: overview, not management
+
+`Storage.Drives` lists the physical block devices (name, model, size,
+temperature from the `nvme` or `drivetemp` hwmon, −1 when none) and
+`Storage.Filesystems` the mounted local filesystems (mount point, device,
+fstype, size, used) — real devices only, no tmpfs, no snap loops, no
+bind-mounted duplicates. Everything comes from `/sys/class/block`,
+`/proc/self/mounts` and `statvfs`; no subprocess, no SMART commands (those
+need `smartctl` and root ioctls and are a job for a dedicated tool).
+The interface is read-only by design: a control panel should show a full
+disk, not offer to reformat it.
 
 ## Audio: two layers
 
@@ -128,10 +169,10 @@ The existing polkit action ids are kept and the policy file is reused:
 |---|---|
 | `io.otectus.archer1.set-profile` | `Thermal.SetProfile` |
 | `io.otectus.archer1.set-fan` | `Thermal.SetFanSpeed`, `SetFanAuto`, `SetFanCurve`, `ClearFanCurve` |
-| `io.otectus.archer1.set-hardware` | `Battery.*`, `Lighting.*`, `Power.*`, `Audio.*` |
+| `io.otectus.archer1.set-hardware` | `Battery.*`, `Lighting.*`, `Power.*` except the two below, `Audio.*` |
 | `io.otectus.archer1.set-display` | `Display.SetMode` |
 | `io.otectus.archer1.set-gamemode` | `Power.SetGameMode` |
-| `io.otectus.archer1.system-control` | `Maintenance.*` |
+| `io.otectus.archer1.system-control` | `Maintenance.*`, `Power.SetDynamicBoost` (enables a systemd unit) |
 
 Read-only properties and `Telemetry.Subscribe` need no authorization. The
 action ids get renamed to the `io.github.archer` namespace in v3.0 when the

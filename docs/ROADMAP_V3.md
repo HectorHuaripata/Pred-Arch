@@ -42,7 +42,7 @@ Developer loop: `cd gui && python3 archer_daemon.py --session-bus`, then
 
 Qt 6 / QML with PySide6, Kirigami + qqc2-desktop-style (Breeze under Plasma).
 
-- [x] Sidebar with 6 sections: Overview · Performance · Lighting · Battery & Power · Display & Audio · System.
+- [x] Sidebar with 7 sections: Overview · Performance · Lighting · Battery & Power · Display & Audio · Camera · System.
 - [x] Pages created on first visit and kept; every control binds to the daemon property it shows (`archerqt/bus.py` generates the Qt properties from the XML).
 - [x] Hidden to tray ⇒ `Telemetry.Unsubscribe`; visible ⇒ `Subscribe(1000)` (500 was measured to cost ~6 % CPU in full-window re-renders for no visible gain on integer readings).
 - [x] Overview: GPU-drawn gauges (Shapes) for temps/usage, RPM hero numbers, 5-minute sparkline, profile bar that follows the hardware button.
@@ -52,6 +52,8 @@ Qt 6 / QML with PySide6, Kirigami + qqc2-desktop-style (Breeze under Plasma).
 - [x] Tray: `QSystemTrayIcon` with quick profile switch and temperatures in the tooltip while visible.
 - [x] Restructured for contribution: `paths` / `settings` / `catalog` / `tray` / `controller` modules, every string through `qsTr()` / `translate()`, no literal paths, thresholds or cadences in QML.
 - [x] Audio: SOF DSP controls (speaker DRC, mic beamforming + angle, mic DRC, auto-mute) on the `Audio` interface and the Display & Audio page; RNNoise availability and echo-cancel detection surfaced.
+- [x] CPU energy policy (EPP per profile, turbo, governor), NVIDIA Dynamic Boost, `Storage` interface and Overview card, NPU gauge.
+- [x] Session-side helpers that need no daemon: panel refresh rate through `kscreen-doctor`, camera controls through `v4l2-ctl`.
 - [ ] Speaker EQ presets through PipeWire's built-in biquads (session side); deliberately not started — it would touch the user's PipeWire graph.
 - [ ] Spanish translation (`gui-qt/translations/`, infrastructure in place).
 - [ ] Fan-curve editor is a plain point list; a drag-able chart is a later polish.

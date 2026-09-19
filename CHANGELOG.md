@@ -20,6 +20,30 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   a WebRTC echo-cancel module is configured in the user's PipeWire session.
 - System page explains what fwupd would and would not update on an Acer
   (BIOS comes from Acer's site; fwupd covers SSD and Thunderbolt).
+- **CPU energy policy.** `Power` exposes the `intel_pstate` energy-
+  performance preference, turbo, scaling governor and the P/E-core
+  topology. The preference is remembered **per platform profile** and
+  reapplied after `power-profiles-daemon` writes its default, so "Quiet"
+  can mean `power` and "Performance" can mean `performance` without
+  touching the OS profile. NVIDIA Dynamic Boost (`nvidia-powerd`) can be
+  enabled from the same page. Performance page gets a CPU card and a
+  Discrete GPU card (with live power draw).
+- **Storage overview.** New read-only `Storage` interface: drives with
+  model, size and hwmon temperature, plus mounted local filesystems with
+  usage bars on the Overview page. Sampled every 10 s from sysfs; no
+  subprocess, no SMART.
+- Overview: NPU load gauge (`intel_vpu` busy time) when the accelerator is
+  present, average CPU frequency and GPU power under the gauges, memory
+  used/total.
+- **Panel refresh rate** on the Display & Audio page, read from and
+  applied through `kscreen-doctor` in the user's session (Plasma keeps the
+  choice per display). Shown disabled, with the reason, when the built-in
+  panel is switched off.
+- **Camera page.** Every v4l2 control of the first video device
+  (brightness, white balance, power-line frequency, exposure, privacy…)
+  rendered from its type — sliders, switches, menu buttons — with a
+  restore-defaults button. Session side through `v4l2-ctl`; the daemon is
+  not involved. New installer dependency `v4l-utils`.
 
 ### Fixed
 

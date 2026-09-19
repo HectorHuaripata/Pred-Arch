@@ -17,10 +17,12 @@ The v3 GUI. Talks only to `io.github.archer.Control1` (see
 | `archerqt/controller.py` | visibility → telemetry cadence; session-side reactions (PipeWire restart) |
 | `archerqt/controller.py` also scans PipeWire drop-ins once for an echo-cancel module | shown on the Audio page |
 | `archerqt/single_instance.py` | one panel per session: owns `io.github.archer.Panel`; a second launch activates the first |
+| `archerqt/display_modes.py` | built-in panel refresh rates via `kscreen-doctor` (session side, no daemon) |
+| `archerqt/camera.py` | v4l2 controls of the first camera via `v4l2-ctl`, rendered generically by type |
 | `archerqt/app.py` | wiring and `main()` |
 | `qml/Main.qml` | sidebar and lazily created pages |
-| `qml/pages/` | Overview · Performance · Lighting · Battery & Power · Display & Audio · System |
-| `qml/components/` | Gauge (Shapes), Sparkline, BoundSwitch / BoundSlider (revert on daemon error), ChoiceButton, KeyboardPreview, Card, Hint, Eyebrow, Swatch |
+| `qml/pages/` | Overview · Performance · Lighting · Battery & Power · Display & Audio · Camera · System |
+| `qml/components/` | Gauge (Shapes), Sparkline, BoundSwitch / BoundSlider (revert on daemon error), ChoiceButton, KeyboardPreview, Card, Hint, Eyebrow, Swatch, StatTile, ProfileBar |
 | `translations/` | Qt Linguist catalogues |
 
 ## Conventions
@@ -44,7 +46,9 @@ daemon without touching the installed one:
     python3 gui/archer_daemon.py --session-bus &
     ARCHER_BUS=session python3 gui-qt/archer_qt.py
 
-Dependencies on Arch: `pyside6 qt6-declarative kirigami qqc2-desktop-style`.
+Dependencies on Arch: `pyside6 qt6-declarative kirigami qqc2-desktop-style v4l-utils`
+(`kscreen-doctor` comes with Plasma's `kscreen`; without it the refresh-rate
+card hides itself).
 
 ## Behaviour and cost
 

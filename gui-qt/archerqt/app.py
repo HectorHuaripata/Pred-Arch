@@ -25,7 +25,9 @@ from PySide6.QtWidgets import QApplication
 
 from archerqt import __version__, paths
 from archerqt.bus import ArcherBus
+from archerqt.camera import Camera
 from archerqt.catalog import Catalog
+from archerqt.display_modes import DisplayModes
 from archerqt.controller import AppController
 from archerqt.history import History
 from archerqt.settings import ORGANIZATION, AppSettings
@@ -93,6 +95,8 @@ def main(argv=None):
     catalog = Catalog()
     bus = ArcherBus()
     history = History()
+    panel_modes = DisplayModes()
+    camera = Camera()
     controller = AppController(bus, settings, catalog)
 
     engine = QQmlApplicationEngine()
@@ -102,6 +106,8 @@ def main(argv=None):
     context.setContextProperty("Settings", settings)
     context.setContextProperty("Catalog", catalog)
     context.setContextProperty("History", history)
+    context.setContextProperty("Panel", panel_modes)
+    context.setContextProperty("Camera", camera)
     for name, interface in bus.interfaces.items():
         context.setContextProperty(name, interface)
     engine.load(QUrl.fromLocalFile(str(paths.qml_dir() / "Main.qml")))

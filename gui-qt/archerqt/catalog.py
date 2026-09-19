@@ -49,6 +49,11 @@ CAPABILITIES = {
     "usb_wake_policy": "Wake sources",
     "firmware_info": "Firmware info",
     "audio_dsp": "Audio DSP (speaker & microphone processing)",
+    "cpu_epp": "CPU energy preference",
+    "cpu_turbo": "CPU turbo control",
+    "cpu_governor": "CPU frequency governor",
+    "nvidia_dynamic_boost": "NVIDIA Dynamic Boost",
+    "npu": "NPU utilisation",
 }
 
 # ACPI wake device names worth showing. /proc/acpi/wakeup also lists every
@@ -81,6 +86,15 @@ DISPLAY_MODES = (
 # linuwu_sense module parameters the daemon may set.
 MODPROBE_PARAMETERS = (("", "Auto-detect"), ("nitro_v4", "nitro_v4"),
                        ("predator_v4", "predator_v4"), ("enable_all", "enable_all"))
+
+# energy_performance_preference values -> (label, hint)
+EPP = {
+    "default": ("Default", "Whatever the platform firmware picked"),
+    "performance": ("Performance", "Highest clocks, quickest ramp-up"),
+    "balance_performance": ("Balanced +", "Leans to performance"),
+    "balance_power": ("Balanced −", "Leans to battery life"),
+    "power": ("Power saving", "Lowest clocks the load allows"),
+}
 
 # Temperature chart ranges, in seconds.
 CHART_RANGES = ((300, "5 min"), (600, "10 min"), (1800, "30 min"), (3600, "1 hour"), (86400, "1 day"))
@@ -159,6 +173,17 @@ class Catalog(QObject):
     def modprobeParameters(self):
         """[[value, label], …]; "" means auto-detect (ClearModprobeParameter)."""
         return [[value, _tr(label)] for value, label in MODPROBE_PARAMETERS]
+
+    @Slot(str, result=str)
+    def eppLabel(self, value):
+        """Display name of an energy_performance_preference value."""
+        entry = EPP.get(value)
+        return _tr(entry[0]) if entry else value
+
+    @Slot(str, result=str)
+    def eppHint(self, value):
+        entry = EPP.get(value)
+        return _tr(entry[1]) if entry else ""
 
     @Property("QVariantList", constant=True)
     def chartRanges(self):
