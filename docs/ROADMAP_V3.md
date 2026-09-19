@@ -51,6 +51,8 @@ Qt 6 / QML with PySide6, Kirigami + qqc2-desktop-style (Breeze under Plasma).
 - [x] Controls revert when the daemon refuses (typed errors → passive notification; `NotAuthorized` silent).
 - [x] Tray: `QSystemTrayIcon` with quick profile switch and temperatures in the tooltip while visible.
 - [x] Restructured for contribution: `paths` / `settings` / `catalog` / `tray` / `controller` modules, every string through `qsTr()` / `translate()`, no literal paths, thresholds or cadences in QML.
+- [x] Audio: SOF DSP controls (speaker DRC, mic beamforming + angle, mic DRC, auto-mute) on the `Audio` interface and the Display & Audio page; RNNoise availability and echo-cancel detection surfaced.
+- [ ] Speaker EQ presets through PipeWire's built-in biquads (session side); deliberately not started — it would touch the user's PipeWire graph.
 - [ ] Spanish translation (`gui-qt/translations/`, infrastructure in place).
 - [ ] Fan-curve editor is a plain point list; a drag-able chart is a later polish.
 - Exit criterion met: every control reflects external changes within one sampling interval; only `Display.SetMode` needs a confirmation step (logout).

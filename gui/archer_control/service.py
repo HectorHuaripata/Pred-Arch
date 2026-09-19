@@ -58,6 +58,7 @@ class ArcherControl(SystemInterface, TelemetryInterface, ThermalInterface, Batte
                 self._on_get_property, None)
             self._reg_ids.append(reg)
 
+        self._init_audio_dsp()
         self._seed_all()
         self._profile_fd = None
         self._profile_watch = 0

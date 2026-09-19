@@ -43,7 +43,14 @@ class SingleInstance:
     """Call acquire() first; if it returns False, call activate_existing()
     and exit. Otherwise call serve(callback) once the window exists."""
 
-    def __init__(self, bus_type=Gio.BusType.SESSION):
+    NAME = NAME
+    PATH = PATH
+
+    def __init__(self, bus_type=Gio.BusType.SESSION, name=NAME, path=PATH):
+        # A development panel (ARCHER_BUS=session) uses its own name so it
+        # never activates the installed one instead of starting.
+        self._name = name
+        self._path = path
         self._conn = Gio.bus_get_sync(bus_type, None)
         self._registration = 0
 
@@ -51,14 +58,14 @@ class SingleInstance:
         """True when this process is now the one panel."""
         reply = self._conn.call_sync(
             "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
-            "RequestName", GLib.Variant("(su)", (NAME, DO_NOT_QUEUE)),
+            "RequestName", GLib.Variant("(su)", (self._name, DO_NOT_QUEUE)),
             GLib.VariantType("(u)"), Gio.DBusCallFlags.NONE, 5000, None)
         return reply.unpack()[0] in (REPLY_PRIMARY_OWNER, REPLY_ALREADY_OWNER)
 
     def activate_existing(self):
         """Ask the running panel to show its window."""
         try:
-            self._conn.call_sync(NAME, PATH, IFACE, "Activate", None, None,
+            self._conn.call_sync(self._name, self._path, IFACE, "Activate", None, None,
                                  Gio.DBusCallFlags.NONE, 5000, None)
             logger.info("Archer is already running; activated the existing window")
         except GLib.Error as e:
@@ -77,4 +84,4 @@ class SingleInstance:
                     "org.freedesktop.DBus.Error.UnknownMethod", method)
 
         self._registration = self._conn.register_object(
-            PATH, info.interfaces[0], on_call, None, None)
+            self._path, info.interfaces[0], on_call, None, None)

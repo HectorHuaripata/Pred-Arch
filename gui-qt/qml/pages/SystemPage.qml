@@ -67,6 +67,10 @@ Kirigami.ScrollablePage {
             subtitle: Firmware.fwupdAvailable
                       ? (Firmware.lastRefresh > 0 ? qsTr("checked %1").arg(new Date(Firmware.lastRefresh * 1000).toLocaleTimeString()) : qsTr("not checked yet"))
                       : qsTr("fwupd is not installed")
+            Hint {
+                visible: Firmware.fwupdAvailable !== true
+                text: qsTr("Optional. Acer does not publish Predator BIOS updates on LVFS, so the BIOS (currently %1) is updated from Acer's support site. fwupd would still cover the SSD and Thunderbolt/USB4 controllers: `sudo pacman -S fwupd`.").arg(Firmware.biosVersion || "?")
+            }
             RowLayout {
                 QQC2.Button { text: qsTr("Check for updates"); icon.name: "view-refresh"; enabled: Firmware.fwupdAvailable === true && !page.refreshing
                     onClicked: { page.refreshing = true; Bus.call("Firmware", "Refresh") } }

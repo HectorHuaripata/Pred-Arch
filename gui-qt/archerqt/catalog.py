@@ -48,6 +48,7 @@ CAPABILITIES = {
     "game_mode": "Game mode",
     "usb_wake_policy": "Wake sources",
     "firmware_info": "Firmware info",
+    "audio_dsp": "Audio DSP (speaker & microphone processing)",
 }
 
 # ACPI wake device names worth showing. /proc/acpi/wakeup also lists every

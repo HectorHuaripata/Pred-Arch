@@ -15,6 +15,7 @@ common.py      typed error, colour helpers, XML loading
 store.py       PropertyStore — last-emitted values, delta emitter
 telemetry.py   TelemetrySampler — subscriber-driven sampling
 coalescer.py   LightingCoalescer — last-state-wins LED writes
+alsa_dsp.py    SofDsp — the codec card's DSP controls through amixer (cold path)
 interfaces/    one mixin per D-Bus interface (value builder + handlers)
 service.py     ArcherControl — registration, dispatch, polkit, watches
 

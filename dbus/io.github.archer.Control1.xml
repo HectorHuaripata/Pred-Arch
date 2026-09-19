@@ -221,12 +221,44 @@
     </method>
   </interface>
 
-  <!-- The daemon only renames the pipewire filter file; the client that
-       sees NoiseSuppression change restarts pipewire in its own session. -->
+  <!-- Two layers. NoiseSuppression is a PipeWire filter (RNNoise) that the
+       audio-enhance installer module sets up; the daemon only renames its
+       file and the client that sees the property change restarts PipeWire
+       in its own session. Everything else is processing inside the Intel
+       SOF DSP, exposed as ALSA mixer controls of the codec card: speaker
+       dynamic-range compression, the 4-microphone beamformer (with a
+       steerable angle in degrees, 0 = straight ahead, negative = left),
+       microphone DRC, and the codec's headphone auto-mute. Absent controls
+       report DspAvailable = false and the setters raise Unsupported. -->
   <interface name="io.github.archer.Control1.Audio">
-    <property name="NoiseSuppression" type="b" access="read"/>
+    <property name="NoiseSuppression"          type="b" access="read"/>
+    <!-- The RNNoise filter file exists (enabled or disabled). -->
+    <property name="NoiseSuppressionAvailable" type="b" access="read"/>
+    <property name="DspAvailable"     type="b"  access="read"/>
+    <property name="SpeakerDrc"       type="b"  access="read"/>
+    <property name="AutoMute"         type="b"  access="read"/>
+    <property name="MicDrc"           type="b"  access="read"/>
+    <property name="MicBeamforming"   type="b"  access="read"/>
+    <property name="MicBeamAngle"     type="i"  access="read"/>
+    <!-- Angles the beamformer accepts, e.g. -90 … 90 in 15° steps. -->
+    <property name="MicBeamAngles"    type="ai" access="read"/>
     <method name="SetNoiseSuppression">
       <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetSpeakerDrc">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetAutoMute">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetMicDrc">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetMicBeamforming">
+      <arg direction="in" name="enabled" type="b"/>
+    </method>
+    <method name="SetMicBeamAngle">
+      <arg direction="in" name="degrees" type="i"/>
     </method>
   </interface>
 

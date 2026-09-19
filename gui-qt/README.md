@@ -15,6 +15,7 @@ The v3 GUI. Talks only to `io.github.archer.Control1` (see
 | `archerqt/history.py` | fixed-memory multi-resolution history for the temperature chart |
 | `archerqt/tray.py` | tray icon: open/hide, quick profile switch, temperatures in the tooltip |
 | `archerqt/controller.py` | visibility → telemetry cadence; session-side reactions (PipeWire restart) |
+| `archerqt/controller.py` also scans PipeWire drop-ins once for an echo-cancel module | shown on the Audio page |
 | `archerqt/single_instance.py` | one panel per session: owns `io.github.archer.Panel`; a second launch activates the first |
 | `archerqt/app.py` | wiring and `main()` |
 | `qml/Main.qml` | sidebar and lazily created pages |

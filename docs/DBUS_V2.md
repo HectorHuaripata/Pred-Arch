@@ -83,6 +83,27 @@ rate-limited the same way.
 `SetZoneMask` exposes the controller's native bitmask so a client can paint
 half the keyboard in one write instead of four.
 
+## Audio: two layers
+
+`Audio.NoiseSuppression` is a PipeWire filter (RNNoise) that the
+`audio-enhance` installer module sets up; the daemon only renames the filter
+file, and the client that sees the property change restarts PipeWire in its
+own session. `NoiseSuppressionAvailable` says whether the filter is installed
+at all; without it the setter raises `Unsupported`.
+
+Everything else on the interface is processing that runs **inside the Intel
+SOF DSP** and is exposed as ALSA mixer controls of the codec card: speaker
+dynamic-range compression (`SpeakerDrc`), the 4-microphone beamformer
+(`MicBeamforming`, `MicBeamAngle` in degrees from `MicBeamAngles`, 0 =
+straight ahead, negative = left), microphone DRC (`MicDrc`) and the codec's
+headphone auto-mute (`AutoMute`). The daemon reads and writes them with
+`amixer` — a subprocess, tolerated because these are cold paths: once at
+startup, once per user action, never sampled. Values are remembered in the
+daemon settings and reapplied at startup (alsa-restore normally keeps them;
+the reapply covers an unclean shutdown). A codec without the beamformer
+control reports `DspAvailable = false` and the feature `audio_dsp` is absent,
+so the setters raise `Unsupported` before polkit.
+
 ## Errors
 
 Methods fail with D-Bus errors, never with a "success: false" payload:

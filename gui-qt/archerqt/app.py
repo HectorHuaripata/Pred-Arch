@@ -80,7 +80,9 @@ def main(argv=None):
 
     # One panel per session. A second launch raises the first one's window
     # and exits before touching the daemon or the tray.
-    instance = SingleInstance()
+    dev = os.environ.get("ARCHER_BUS") == "session"
+    instance = SingleInstance(name=SingleInstance.NAME + (".Dev" if dev else ""),
+                              path=SingleInstance.PATH + ("/Dev" if dev else ""))
     if not instance.acquire():
         instance.activate_existing()
         return 0

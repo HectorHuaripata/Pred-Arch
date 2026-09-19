@@ -7,8 +7,24 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Added
+
+- **Audio processing in the DSP.** The Intel SOF firmware behind the
+  Realtek ALC245 exposes speaker dynamic-range compression, a steerable
+  4-microphone beamformer (−90…+90°), microphone DRC and headphone
+  auto-mute as ALSA controls. `Audio` publishes them as typed properties
+  with setters; the panel's Display & Audio page gets Speakers and
+  Microphone cards. Zero CPU: the DSP does the work. Values persist and are
+  reapplied at daemon start.
+- Audio page also shows whether the RNNoise filter is installed and whether
+  a WebRTC echo-cancel module is configured in the user's PipeWire session.
+- System page explains what fwupd would and would not update on an Acer
+  (BIOS comes from Acer's site; fwupd covers SSD and Thunderbolt).
+
 ### Fixed
 
+- **Noise suppression toggle reported success without the filter.** It now
+  raises `Unsupported` with the installer module to run.
 - **One panel per session.** Launching Archer while it was already running
   started another full instance: another telemetry subscription, another
   tray icon, ~70 MB more, and two windows able to send contradictory

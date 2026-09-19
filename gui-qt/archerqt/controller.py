@@ -9,6 +9,7 @@ Application controller: the little that QML needs beyond D-Bus.
 """
 
 import logging
+from pathlib import Path
 
 from PySide6.QtCore import Property, QCoreApplication, QObject, QProcess, Signal, Slot
 
@@ -18,6 +19,21 @@ from archerqt.tray import TrayIcon
 logger = logging.getLogger("archer-qt")
 
 PIPEWIRE_RESTART = ("systemctl", ["--user", "restart", "pipewire.service"])
+# Where PipeWire reads drop-in configuration; scanned once for an
+# echo-cancel module so the Audio page can say it is there.
+PIPEWIRE_CONF_DIRS = (Path.home() / ".config/pipewire/pipewire.conf.d", Path("/etc/pipewire/pipewire.conf.d"))
+ECHO_CANCEL_MODULE = "libpipewire-module-echo-cancel"
+
+
+def _echo_cancel_configured():
+    for conf_dir in PIPEWIRE_CONF_DIRS:
+        for conf in conf_dir.glob("*.conf"):
+            try:
+                if ECHO_CANCEL_MODULE in conf.read_text(errors="replace"):
+                    return True
+            except OSError:
+                continue
+    return False
 
 
 def _tr(text):
@@ -62,6 +78,11 @@ class AppController(QObject):
     def windowVisible(self):
         """Whether the main window is on screen (drives the telemetry cadence)."""
         return self._window_visible
+
+    @Property(bool, constant=True)
+    def echoCancelDetected(self):
+        """A WebRTC echo-cancel module is configured in this session's PipeWire."""
+        return _echo_cancel_configured()
 
     @Property(bool, constant=True)
     def hasTray(self):
